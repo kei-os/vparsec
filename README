@@ -1,0 +1,6 @@
+vparsec is a Verilog 1995 (IEEE1364-1995) Parser with Haskell Parsec library.
+
+i've just created the repository on github, and currently it does not work yet.
+
+here is the Verilog's BNF used in this parser:
+http://www.verilog.com/VerilogBNF.html
