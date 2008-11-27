@@ -3,5 +3,7 @@ module sample (
 	b,
 	c
 );
+input [:] a, b, c;
+
 
 endmodule

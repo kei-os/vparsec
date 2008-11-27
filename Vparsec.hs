@@ -96,9 +96,9 @@ moduleDeclaration = do { a <- try(symbol "module")
               = do { a <- lexeme nameOfModule
                    ; b <- listOfPorts <|> string ""
                    ; c <- semi
---                   ; d <- lexeme(many moduleItem)     -- XXX TODO : next implementation
+                   ; d <- lexeme(many moduleItem)
                    ; e <- symbol "endmodule"
-                   ; return $ a ++ b ++ c {-++ (concat d)-} ++ e }
+                   ; return $ a ++ b ++ c ++ (concat d) ++ e }
 
 nameOfModule :: Parser String
 nameOfModule = identifier <?> "nameOfModule"
@@ -181,12 +181,51 @@ constantExpression :: Parser String
 constantExpression = string ""      -- dummy
                  <?> "constantExpression"
 
-{--
 {--------- XXX not yet ---------}
--- XXX impl
 moduleItem :: Parser String
 moduleItem = lexeme inputDeclaration
          <?> "moduleItem"
+
+inputDeclaration :: Parser String
+inputDeclaration = do { a <- symbol "input"
+                      ; b <- range <|> string ""
+                      ; c <- listOfPortIdentifiers
+                      ; d <- semi
+                      ; return $ a ++ b ++ c ++ d}
+               <?> "inputDeclaration"
+
+listOfPortIdentifiers :: Parser String
+listOfPortIdentifiers = do { a <- portIdentifier
+                           ; b <- many commaPortIdentifier
+                           ; return $ a ++ (concat b) }
+                    <?> "listOfPortIdentifiers"
+    where
+        commaPortIdentifier :: Parser String
+        commaPortIdentifier = do { a <- comma
+                                 ; b <- lexeme identifier
+                                 ; return $ a ++ b }
+
+portIdentifier :: Parser String
+portIdentifier = identifier
+
+range :: Parser String
+range = brackets range_
+   <?> "range"
+    where
+        range_ :: Parser String
+        range_ = do { a <- lexeme constantExpression
+                    ; b <- colon
+                    ; c <- lexeme constantExpression
+                    ; return $ a ++ b ++ c }
+
+outputDeclaration :: Parser String
+outputDeclaration = do { a <- symbol "output"
+                       ; b <- range <|> string ""
+                       ; c <- listOfPortIdentifiers
+                       ; d <- semi
+                       ; return $ a ++ b ++ c ++ d }
+                <?> "outputDeclaration"
+
 {--
 moduleItem = do { a <- try(parameterDeclaration) ; return a }
          <|> do { a <- try(inputDeclaration) ; return a }
@@ -199,16 +238,9 @@ moduleItem = do { a <- try(parameterDeclaration) ; return a }
          <?> "moduleItem"
 --}
 
+{--
 parameterDeclaration :: Parser String
 parameterDeclaration = string ""        -- XXX FIXME
-
-inputDeclaration :: Parser String
-inputDeclaration = do { a <- symbol "input"     -- XXX can use reserved??
-                      ; b <- lexeme range <|> string ""
-                      ; c <- lexeme listOfVariables
-                      ; d <- semi
-                      ; return $ a ++ b ++ c ++ d }
-                <?> "inputDeclaration"
 
 -- XXX TODO : drive_strength, expandrange, delay
 listOfVariables :: Parser String
@@ -221,16 +253,6 @@ listOfVariables = do { a <- nettype
 nettype :: Parser String
 nettype = do { a <- symbol "wire" ; return a } <?> "nettype"
 
-
-range :: Parser String
-range = brackets range_
-   <?> "range"
-    where
-        range_ :: Parser String
-        range_ = do { a <- lexeme constantExpression
-                    ; b <- colon
-                    ; c <- lexeme constantExpression
-                    ; return $ a ++ b ++ c }
 
 listOfAssignments :: Parser String
 listOfAssignments = do { a <- lexeme assignment
@@ -252,8 +274,6 @@ commaAssignment = do { a <- comma
 inoutDeclaration :: Parser String
 inoutDeclaration = string ""            -- XXX FIXME
 
-outputDeclaration :: Parser String
-outputDeclaration = string ""
 
 netDeclaration :: Parser String
 netDeclaration = string ""
