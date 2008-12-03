@@ -254,12 +254,21 @@ listOfRegisterVariables = do { a <- lexeme registerVariable
                               ; return $ a ++ b }
 
 -- Expression
-
+-- XXX omit left recursion
 expression :: Parser String
-expression = try(primary)
-         <|> do { a <- unaryOperator; b <- primary; return $ a ++ b }
-         <|> string'
-         <?> "expression"
+expression = do { a <- optExpression
+                ; b <- expression_ <|> expression__
+                ; return $ a ++ b }
+        <?> "expression"
+    where
+        optExpression
+            = try(primary)
+          <|> do { a <- unaryOperator; b <- primary; return $ a ++ b }
+          <|> string ""
+        expression_
+            = string ""
+        expression__        
+            = string ""
 
 -- XXX FIXME : use languageDef
 unaryOperator :: Parser String
