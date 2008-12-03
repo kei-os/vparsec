@@ -5,4 +5,6 @@
 	* outputDeclaration, regDeclarationを moduleItemに接続して、評価されるようにした。
 	* expressionを左再帰を除去した形で仮実装した。
 	* それなりに expressionを実装した (operatorの実装がまだ)。
+	* コメントアウトした古い expressionを削除した。
+	* inoutDeclarationを実装した。
 

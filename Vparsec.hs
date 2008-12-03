@@ -183,9 +183,10 @@ constantExpression = expression
 
 {--------- XXX not yet ---------}
 moduleItem :: Parser String
-moduleItem = lexeme inputDeclaration
-         <|> lexeme outputDeclaration
-         <|> lexeme regDeclaration
+moduleItem = try(lexeme inputDeclaration)
+         <|> try(lexeme outputDeclaration)
+         <|> try(lexeme inoutDeclaration)
+         <|> try(lexeme regDeclaration)
          <?> "moduleItem"
 
 inputDeclaration :: Parser String
@@ -227,6 +228,14 @@ outputDeclaration = do { a <- symbol "output"
                        ; d <- semi
                        ; return $ a ++ b ++ c ++ d }
                 <?> "outputDeclaration"
+
+inoutDeclaration :: Parser String
+inoutDeclaration = do { a <- symbol "inout"
+                      ; b <- range <|> string ""
+                      ; c <- listOfPortIdentifiers
+                      ; d <- semi
+                      ; return $ a ++ b ++ c ++ d }
+                <?> "inoutDeclaration"
 
 regDeclaration :: Parser String
 regDeclaration = do { a <- symbol "reg"
@@ -327,17 +336,6 @@ string' = string ""             -- XXX FIXME
 questionMark :: Parser String
 questionMark = symbol "?"       --- XXX FIXME
 
-{--
-moduleItem = do { a <- try(parameterDeclaration) ; return a }
-         <|> do { a <- try(inputDeclaration) ; return a }
-         <|> do { a <- try(outputDeclaration) ; return a }
-         <|> do { a <- try(inoutDeclaration) ; return a }
-         <|> do { a <- try(regDeclaration); return a }
-         <|> do { a <- try(netDeclaration); return a }
-         <|> do { a <- try(initialStatement); return a }
-         <|> do { a <- try(alwaysStatement); return a }
-         <?> "moduleItem"
---}
 
 {--
 parameterDeclaration :: Parser String
@@ -372,8 +370,6 @@ commaAssignment = do { a <- comma
                      ; return $ a ++ b }
 
 
-inoutDeclaration :: Parser String
-inoutDeclaration = string ""            -- XXX FIXME
 
 
 netDeclaration :: Parser String
@@ -446,47 +442,6 @@ lvalue :: Parser String
 lvalue = lexeme identifier
     <?> "lvalue"
 
--- XXX TODO : left recursive to another form
-{- use lexeme parser   2008.11.26
-expression :: Parser String
-expression = do { a <- try(primary) ; return a }
-         <|> do { a <- try(expressionUnary) ; return a }
-         <|> do { a <- try(expressionBinary) ; return a }
-         <|> do { a <- try(expressionQuestion) ; return a }
-         <|> string'
-         <?> "expression"
-            where
-                expressionUnary :: Parser String
-                expressionUnary
-                    = do { a <- unaryOperator
-                         ; b <- primary
-                         ; return $ a ++ b }
-                expressionBinary :: Parser String
-                expressionBinary 
-                    = do { a <- expression
-                         ; spaces
-                         ; b <- binaryOperator
-                         ; spaces
-                         ; c <- expression
-                         ; return $ a ++ b ++ c }
-                expressionQuestion :: Parser String 
-                expressionQuestion
-                    = do { a <- expression
-                         ; spaces
-                         ; b <- questionMark
-                         ; spaces
-                         ; c <- expression
-                         ; spaces
-                         ; d <- string ":"
-                         ; spaces
-                         ; e <- expression
-                         ; return $ a ++ b ++ c ++ d ++ e }
-                string' :: Parser String
-                string'
-                    = do { a <- string "" ; return a }  -- XXX TODO
--}
-
-
 concatenation :: Parser String
 concatenation = braces concatenation_
            <?> "concatenation"
@@ -495,9 +450,4 @@ concatenation = braces concatenation_
                             ; b <- lexeme(many commaExpression)
                             ; return $ a ++ (concat b) }
 
-commaExpression :: Parser String
-commaExpression = do { a <- comma
-                     ; b <- expression
-                     ; return $ a ++ b }
-            <?> "commaExpression"
 --}
