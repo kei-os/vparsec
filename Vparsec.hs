@@ -228,14 +228,12 @@ outputDeclaration = do { a <- symbol "output"
                        ; return $ a ++ b ++ c ++ d }
                 <?> "outputDeclaration"
 
-
 regDeclaration :: Parser String
 regDeclaration = do { a <- symbol "reg"
                     ; b <- range <|> string ""
                     ; c <- listOfRegisterVariables
                     ; d <- semi
                     ; return $ a ++ b ++ c ++ d }
-
              <?> "regDeclaration"
 
 listOfRegisterVariables :: Parser String
@@ -261,25 +259,48 @@ expression = do { a <- optExpression
                 ; return $ a ++ b }
         <?> "expression"
     where
-        optExpression
-            = try(primary)
-          <|> do { a <- unaryOperator; b <- primary; return $ a ++ b }
-          <|> string ""
+        optExpression = try(primary)
+          <|> try(do { a <- lexeme unaryOperator
+                     ; b <- lexeme primary
+                     ; return $ a ++ b })
+          <|> string'
         expression_
-            = string ""
+            = try(do { a <- lexeme binaryOperator
+                     ; b <- lexeme expression
+                     ; c <- lexeme expression_
+                     ; return $ a ++ b ++ c })
+          <|> string ""
         expression__        
-            = string ""
+            = try(do { a <- lexeme questionMark
+                     ; b <- lexeme expression
+                     ; c <- colon
+                     ; d <- lexeme expression
+                     ; e <- lexeme expression__
+                     ; return $ a ++ b ++ c ++ d ++ e })
+          <|> string ""
 
--- XXX FIXME : use languageDef
+-- XXX FIXME : not good impl.... use languageDef??
 unaryOperator :: Parser String
-unaryOperator = try(symbol "~&")
+unaryOperator = try(symbol "+")
+            <|> try(symbol "-")
+            <|> try(symbol "!")
+            <|> try(symbol "~")
+            <|> try(symbol "&")
+            <|> try(symbol "|")
+            <|> try(symbol "^")
+            <|>try(symbol "~&")
             <|> try(symbol "^|")
             <|> symbol "~^"
---            <|> show $ lexeme (oneOf "+-!~&|^")
             <?> "unaryOperator"
 
+-- XXX not good impl
 binaryOperator :: Parser String
-binaryOperator = string ""      -- XXX FIXME
+binaryOperator = try(symbol "+")
+             <|> try(symbol "-")
+             <|> try(symbol "*")
+             <|> try(symbol "/")
+             <?> "binaryOperator"
+            -- XXX TODO and more...
 
 primary :: Parser String
 primary = number
@@ -303,6 +324,8 @@ decimalNumber = do { a <- many1(digit <|> char '_'); return a }     -- work arou
 string' :: Parser String
 string' = string ""             -- XXX FIXME
 
+questionMark :: Parser String
+questionMark = symbol "?"       --- XXX FIXME
 
 {--
 moduleItem = do { a <- try(parameterDeclaration) ; return a }
@@ -463,8 +486,6 @@ expression = do { a <- try(primary) ; return a }
                     = do { a <- string "" ; return a }  -- XXX TODO
 -}
 
-questionMark :: Parser String
-questionMark = string "?"       --- XXX FIXME
 
 concatenation :: Parser String
 concatenation = braces concatenation_

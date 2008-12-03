@@ -4,4 +4,5 @@
 	* decimalNumberまで評価されるよう、expressionを仮実装した。
 	* outputDeclaration, regDeclarationを moduleItemに接続して、評価されるようにした。
 	* expressionを左再帰を除去した形で仮実装した。
+	* それなりに expressionを実装した (operatorの実装がまだ)。
 
