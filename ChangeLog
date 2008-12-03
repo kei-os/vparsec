@@ -1,0 +1,6 @@
+2008-12-04  kei-os <keisuke.aono@gmail.com>
+
+	* regDeclarationを実装した。
+	* decimalNumberまで評価されるよう、expressionを仮実装した。
+	* outputDeclaration, regDeclarationを moduleItemに接続して、評価されるようにした。
+

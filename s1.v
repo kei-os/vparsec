@@ -1,9 +1,12 @@
 module sample (
 	a,
 	b,
-	c
+	c, d, e
 );
-input [:] a, b, c;
+input [7:0] a, b, c;
+output d, e;
+
+reg	hoge, _dff123;
 
 
 endmodule

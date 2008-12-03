@@ -177,13 +177,15 @@ udpDeclaration = string ""
              <?> "udpDeclaration"
 
 constantExpression :: Parser String
---constantExpression = expression
-constantExpression = string ""      -- dummy
+constantExpression = expression
+--constantExpression = string ""      -- dummy
                  <?> "constantExpression"
 
 {--------- XXX not yet ---------}
 moduleItem :: Parser String
 moduleItem = lexeme inputDeclaration
+         <|> lexeme outputDeclaration
+         <|> lexeme regDeclaration
          <?> "moduleItem"
 
 inputDeclaration :: Parser String
@@ -225,6 +227,73 @@ outputDeclaration = do { a <- symbol "output"
                        ; d <- semi
                        ; return $ a ++ b ++ c ++ d }
                 <?> "outputDeclaration"
+
+
+regDeclaration :: Parser String
+regDeclaration = do { a <- symbol "reg"
+                    ; b <- range <|> string ""
+                    ; c <- listOfRegisterVariables
+                    ; d <- semi
+                    ; return $ a ++ b ++ c ++ d }
+
+             <?> "regDeclaration"
+
+listOfRegisterVariables :: Parser String
+listOfRegisterVariables = do { a <- lexeme registerVariable
+                             ; b <- lexeme(many commaRegisterVariable)
+                             ; return $ a ++ (concat b) }
+                     <?> "listOfRegisterVariables"
+    where
+        commaRegisterVariable :: Parser String
+        commaRegisterVariable = do { a <- comma
+                                   ; b <- registerVariable
+                                   ; return $ a ++ b}
+        registerVariable :: Parser String
+        registerVariable = do { a <- lexeme identifier
+                              ; b <- lexeme range <|> string ""
+                              ; return $ a ++ b }
+
+-- Expression
+
+expression :: Parser String
+expression = try(primary)
+         <|> do { a <- unaryOperator; b <- primary; return $ a ++ b }
+         <|> string'
+         <?> "expression"
+
+-- XXX FIXME : use languageDef
+unaryOperator :: Parser String
+unaryOperator = try(symbol "~&")
+            <|> try(symbol "^|")
+            <|> symbol "~^"
+--            <|> show $ lexeme (oneOf "+-!~&|^")
+            <?> "unaryOperator"
+
+binaryOperator :: Parser String
+binaryOperator = string ""      -- XXX FIXME
+
+primary :: Parser String
+primary = number
+      <?> "primary"
+
+number :: Parser String
+number = lexeme decimalNumber
+   <?> "number"
+
+decimalNumber :: Parser String
+{-
+decimalNumber = do { a <- try(oneOf "+-") <|> string ""     -- XXX FIXME : Char to String
+                   ; b <- many(digit <|> char '_')
+                   ; return $ a ++ (concat b) }
+            <?> "decimalNumber"
+-}
+decimalNumber = do { a <- many1(digit <|> char '_'); return a }     -- work around
+          <?> "decimalNumber"
+
+
+string' :: Parser String
+string' = string ""             -- XXX FIXME
+
 
 {--
 moduleItem = do { a <- try(parameterDeclaration) ; return a }
@@ -278,8 +347,6 @@ inoutDeclaration = string ""            -- XXX FIXME
 netDeclaration :: Parser String
 netDeclaration = string ""
 
-regDeclaration :: Parser String
-regDeclaration = string ""
 
 timeDeclaration :: Parser String
 timeDeclaration = string ""
@@ -386,34 +453,6 @@ expression = do { a <- try(primary) ; return a }
                 string'
                     = do { a <- string "" ; return a }  -- XXX TODO
 -}
-
-expression :: Parser String
-expression = primary
-        <?> "expression"
-
-unaryOperator :: Parser String
-unaryOperator = string ""       -- XXX FIXME
-
-binaryOperator :: Parser String
-binaryOperator = string ""      -- XXX FIXME
-
-primary :: Parser String
-primary = number
-
-number :: Parser String
-number = lexeme decimalNumber
-   <?> "number"
-
-decimalNumber :: Parser String
-decimalNumber = do { a <- try(string "+") <|> try(string "-") <|> string ""
-                   ; b <- decimalNumber_
-                   ; return $ a ++ b }
-             <?> "decimalNumber"
-    where
-        decimalNumber_ = many(digit <|> char '_')
-
-string' :: Parser String
-string' = string ""             -- XXX FIXME
 
 questionMark :: Parser String
 questionMark = string "?"       --- XXX FIXME
