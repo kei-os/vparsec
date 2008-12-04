@@ -7,4 +7,6 @@
 	* それなりに expressionを実装した (operatorの実装がまだ)。
 	* コメントアウトした古い expressionを削除した。
 	* inoutDeclarationを実装した。
+	* moduleItemに tryを追加した。
+	* netDeclarationを実装した。ただし、主要でない構文、delay3は未実装。
 

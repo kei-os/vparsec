@@ -187,6 +187,7 @@ moduleItem = try(lexeme inputDeclaration)
          <|> try(lexeme outputDeclaration)
          <|> try(lexeme inoutDeclaration)
          <|> try(lexeme regDeclaration)
+         <|> try(lexeme netDeclaration)
          <?> "moduleItem"
 
 inputDeclaration :: Parser String
@@ -236,6 +237,38 @@ inoutDeclaration = do { a <- symbol "inout"
                       ; d <- semi
                       ; return $ a ++ b ++ c ++ d }
                 <?> "inoutDeclaration"
+
+netDeclaration :: Parser String
+netDeclaration = do { a <- nettype
+                    ; b <- try(vecorscal) <|> string ""
+                    ; c <- try(range) <|> string ""
+                    ; d <- try(delay3) <|> string ""
+                    ; e <- listOfNetIdentifiers
+                    ; f <- semi
+                    ; return $ a ++ b ++ c ++ d ++ e ++ f }
+            <?> "netDeclaration"
+    where
+        vecorscal :: Parser String
+        vecorscal = brackets vecorscal_
+        vecorscal_ = do { a <- symbol "vectored"
+                        ; b <- symbol "|"
+                        ; c <- symbol "scalared"
+                        ; return $ a ++ b ++ c }
+
+nettype :: Parser String
+nettype = try(symbol "wire")        -- XXX TODO : impl all types
+      <?> "nettype"
+
+listOfNetIdentifiers :: Parser String
+listOfNetIdentifiers = do { a <- identifier
+                          ; b <- many commaNetIdentifier
+                          ; return $ a ++ (concat b) }
+    where
+        commaNetIdentifier :: Parser String
+        commaNetIdentifier = do { a <- comma; b <- identifier; return $ a ++ b }
+
+delay3 :: Parser String
+delay3 = string ""      -- XXX TODO : impl
 
 regDeclaration :: Parser String
 regDeclaration = do { a <- symbol "reg"
@@ -348,9 +381,6 @@ listOfVariables = do { a <- nettype
                      ; c <- semi
                      ; return $ a ++ b ++ c } <?> "listOfVariables"
 
--- XXX TODO : currently only "wire" is supported
-nettype :: Parser String
-nettype = do { a <- symbol "wire" ; return a } <?> "nettype"
 
 
 listOfAssignments :: Parser String
@@ -368,12 +398,6 @@ commaAssignment :: Parser String
 commaAssignment = do { a <- comma
                      ; b <- assignment
                      ; return $ a ++ b }
-
-
-
-
-netDeclaration :: Parser String
-netDeclaration = string ""
 
 
 timeDeclaration :: Parser String
