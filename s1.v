@@ -9,7 +9,7 @@ inout [1:0] e;
 
 reg	hoge, _dff123;
 wire		w1;
-wire [1:0]	w2;
+wire [1:0]	v2;
 
 
 endmodule

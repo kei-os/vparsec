@@ -178,7 +178,6 @@ udpDeclaration = string ""
 
 constantExpression :: Parser String
 constantExpression = expression
---constantExpression = string ""      -- dummy
                  <?> "constantExpression"
 
 {--------- XXX not yet ---------}
@@ -287,11 +286,27 @@ listOfRegisterVariables = do { a <- lexeme registerVariable
         commaRegisterVariable :: Parser String
         commaRegisterVariable = do { a <- comma
                                    ; b <- registerVariable
-                                   ; return $ a ++ b}
-        registerVariable :: Parser String
-        registerVariable = do { a <- lexeme identifier
-                              ; b <- lexeme range <|> string ""
-                              ; return $ a ++ b }
+                                   ; return $ a ++ b }
+
+registerVariable :: Parser String
+registerVariable = do { a <- lexeme identifier
+                      ; b <- lexeme range <|> string ""
+                      ; return $ a ++ b }
+
+-- Behavioral Statements
+
+alwaysStatement :: Parser String
+alwaysStatement = do { a <- symbol "always"
+                     ; b <- statement
+                     ; return $ a ++ b }
+
+statement :: Parser String
+statement = string ""           -- XXX TODO impl
+
+delayOrEventControl :: Parser String
+delayOrEventControl = string "" -- XXX TODO impl
+
+
 
 -- Expression
 -- XXX omit left recursion
@@ -302,16 +317,15 @@ expression = do { a <- optExpression
         <?> "expression"
     where
         optExpression = try(primary)
-          <|> try(do { a <- lexeme unaryOperator
-                     ; b <- lexeme primary
-                     ; return $ a ++ b })
-          <|> string'
-        expression_
-            = try(do { a <- lexeme binaryOperator
-                     ; b <- lexeme expression
-                     ; c <- lexeme expression_
-                     ; return $ a ++ b ++ c })
-          <|> string ""
+                    <|> try(do { a <- lexeme unaryOperator
+                               ; b <- lexeme primary
+                               ; return $ a ++ b })
+                    <|> string'
+        expression_ = try(do { a <- lexeme binaryOperator
+                             ; b <- lexeme expression
+                             ; c <- lexeme expression_
+                             ; return $ a ++ b ++ c })
+                  <|> string ""
         expression__        
             = try(do { a <- lexeme questionMark
                      ; b <- lexeme expression
