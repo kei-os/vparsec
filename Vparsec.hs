@@ -292,6 +292,7 @@ registerVariable :: Parser String
 registerVariable = do { a <- lexeme identifier
                       ; b <- lexeme range <|> string ""
                       ; return $ a ++ b }
+              <?> "registerVariable"
 
 -- Behavioral Statements
 
@@ -299,23 +300,28 @@ alwaysStatement :: Parser String
 alwaysStatement = do { a <- symbol "always"
                      ; b <- statement
                      ; return $ a ++ b }
+              <?> "alwaysStatement"
+
+statementOrNull :: Parser String
+statementOrNull = try(statement) <|> string ""
+              <?> "statementOrNull"
 
 -- XXX this BNF is from IEEE spec.
 statement :: Parser String
-statement = do { a <- try(lexeme blockingAssignment); semi; return a }
---        <|> do { a <- try(lexeme nonBlockingAssignment; semi; return a) }
-        <|> do { a <- try(lexeme proceduralContinuousAssignments); semi; return a }     -- XXX TODO impl
-        <|> do { a <- try(lexeme proceduralTimingControlStatement); semi; return a }    -- XXX TODO impl
-        <|> do { a <- try(lexeme conditionalStatement); semi; return a }
---        <|> do { a <- try(lexeme caseStatement; semi; return a) }
---        <|> do { a <- try(lexeme loopStatement; semi; return a) }
---        <|> do { a <- try(lexeme waitStatement; semi; return a) }
---        <|> do { a <- try(lexeme disableStatement; semi; return a) }
---        <|> do { a <- try(lexeme eventTrigger; semi; return a) }
-        <|> do { a <- try(lexeme seqBlock); semi; return a }        -- XXX TODO impl
---        <|> do { a <- try(lexeme parBlock; semi; return a) }
---        <|> do { a <- try(lexeme taskEnable; semi; return a) }
---        <|> do { a <- try(lexeme systemTaskEnable; semi; return a) }
+statement = do { a <- try(blockingAssignment); semi; return a }
+--        <|> do { a <- try(nonBlockingAssignment; semi; return a) }
+        <|> do { a <- try(proceduralContinuousAssignments); semi; return a }     -- XXX TODO impl
+        <|> do { a <- try(proceduralTimingControlStatement); semi; return a }    -- XXX TODO impl
+        <|> do { a <- try(conditionalStatement); semi; return a }
+--        <|> do { a <- try(caseStatement; semi; return a) }
+--        <|> do { a <- try(loopStatement; semi; return a) }
+--        <|> do { a <- try(waitStatement; semi; return a) }
+--        <|> do { a <- try(disableStatement; semi; return a) }
+--        <|> do { a <- try(eventTrigger; semi; return a) }
+        <|> do { a <- try(seqBlock); semi; return a }        -- XXX TODO impl
+--        <|> do { a <- try(parBlock; semi; return a) }
+--        <|> do { a <- try(taskEnable; semi; return a) }
+--        <|> do { a <- try(systemTaskEnable; semi; return a) }
         <?> "statement"
 
 blockingAssignment :: Parser String
@@ -327,8 +333,10 @@ proceduralContinuousAssignments = string ""
                               <?> "proceduralContinuousAssignments"
 
 proceduralTimingControlStatement :: Parser String
-proceduralTimingControlStatement = string ""
-                              <?> "proceduralTimingControlStatement"
+proceduralTimingControlStatement = do { a <- delayOrEventControl
+                                      ; b <- statementOrNull
+                                      ; return $ a ++ b }
+                               <?> "proceduralTimingControlStatement"
 
 conditionalStatement :: Parser String
 conditionalStatement = string ""
@@ -339,8 +347,21 @@ seqBlock = string ""
        <?> "seqBlock"
 
 delayOrEventControl :: Parser String
-delayOrEventControl = string "" -- XXX TODO impl
+delayOrEventControl = try(delayControl)
+                  <|> try(eventControl)
+                  <|> do { a <- try(symbol "repeat")
+                         ; b <- parens expression
+                         ; c <- eventControl
+                         ; return $ a ++ b ++ c }
                   <?> "delayOrEventControl"
+
+delayControl :: Parser String
+delayControl = string ""
+           <?> "delayControl"
+
+eventControl :: Parser String
+eventControl = string ""
+          <?> "eventControl"
 
 -- Expression
 -- XXX omit left recursion
