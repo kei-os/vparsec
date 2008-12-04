@@ -300,13 +300,47 @@ alwaysStatement = do { a <- symbol "always"
                      ; b <- statement
                      ; return $ a ++ b }
 
+-- XXX this BNF is from IEEE spec.
 statement :: Parser String
-statement = string ""           -- XXX TODO impl
+statement = do { a <- try(lexeme blockingAssignment); semi; return a }
+--        <|> do { a <- try(lexeme nonBlockingAssignment; semi; return a) }
+        <|> do { a <- try(lexeme proceduralContinuousAssignments); semi; return a }     -- XXX TODO impl
+        <|> do { a <- try(lexeme proceduralTimingControlStatement); semi; return a }    -- XXX TODO impl
+        <|> do { a <- try(lexeme conditionalStatement); semi; return a }
+--        <|> do { a <- try(lexeme caseStatement; semi; return a) }
+--        <|> do { a <- try(lexeme loopStatement; semi; return a) }
+--        <|> do { a <- try(lexeme waitStatement; semi; return a) }
+--        <|> do { a <- try(lexeme disableStatement; semi; return a) }
+--        <|> do { a <- try(lexeme eventTrigger; semi; return a) }
+        <|> do { a <- try(lexeme seqBlock); semi; return a }        -- XXX TODO impl
+--        <|> do { a <- try(lexeme parBlock; semi; return a) }
+--        <|> do { a <- try(lexeme taskEnable; semi; return a) }
+--        <|> do { a <- try(lexeme systemTaskEnable; semi; return a) }
+        <?> "statement"
+
+blockingAssignment :: Parser String
+blockingAssignment = string ""
+                <?> "blockingAssignment"
+
+proceduralContinuousAssignments :: Parser String
+proceduralContinuousAssignments = string ""
+                              <?> "proceduralContinuousAssignments"
+
+proceduralTimingControlStatement :: Parser String
+proceduralTimingControlStatement = string ""
+                              <?> "proceduralTimingControlStatement"
+
+conditionalStatement :: Parser String
+conditionalStatement = string ""
+                   <?> "conditionalStatement"
+
+seqBlock :: Parser String
+seqBlock = string ""
+       <?> "seqBlock"
 
 delayOrEventControl :: Parser String
 delayOrEventControl = string "" -- XXX TODO impl
-
-
+                  <?> "delayOrEventControl"
 
 -- Expression
 -- XXX omit left recursion
