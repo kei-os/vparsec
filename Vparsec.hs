@@ -325,6 +325,18 @@ statement = do { a <- try(lexeme blockingAssignment); semi; return a }
 --        <|> do { a <- try(lexeme systemTaskEnable; semi; return a) }
         <?> "statement"
 
+assignment :: Parser String
+assignment = do { a <- lexeme lvalue
+                ; b <- symbol "="
+                ; c <- expression
+                ; return $ a ++ b ++ c } <?> "assignment"
+
+commaAssignment :: Parser String
+commaAssignment = do { a <- comma
+                     ; b <- assignment
+                     ; return $ a ++ b } <?> "commaAssignment"
+
+
 blockingAssignment :: Parser String
 blockingAssignment = string ""
                 <?> "blockingAssignment"
@@ -483,16 +495,6 @@ listOfAssignments = do { a <- lexeme assignment
                        ; b <- many commaAssignment
                        ; return $ a ++ (concat b) } <?> "listOfAssignments"
 
-assignment :: Parser String
-assignment = do { a <- lexeme lvalue
-                ; b <- symbol "="
-                ; c <- expression
-                ; return $ a ++ b ++ c } <?> "assignment"
-
-commaAssignment :: Parser String
-commaAssignment = do { a <- comma
-                     ; b <- assignment
-                     ; return $ a ++ b }
 
 
 timeDeclaration :: Parser String
