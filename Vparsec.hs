@@ -370,15 +370,27 @@ seqBlock = string ""
 delayOrEventControl :: Parser String
 delayOrEventControl = try(delayControl)
                   <|> try(eventControl)
-                  <|> do { a <- try(symbol "repeat")
+                  <|> do { a <- symbol "repeat"
                          ; b <- parens expression
                          ; c <- eventControl
                          ; return $ a ++ b ++ c }
                   <?> "delayOrEventControl"
 
 delayControl :: Parser String
-delayControl = string ""
+delayControl = try(do{ a <- symbol "#"
+                     ; b <- number
+                     ; return $ a ++ b })
+           <|> try(do { a <- symbol "#"
+                      ; b <- lexeme identifier
+                      ; return $ a ++ b })
+           <|> do { a <- symbol "#"
+                  ; b <- parens mintypmaxExpression
+                  ; return $ a ++ b }
            <?> "delayControl"
+
+mintypmaxExpression :: Parser String
+mintypmaxExpression = string ""
+                  <?> "mintypmaxExpression"
 
 eventControl :: Parser String
 eventControl = string ""
