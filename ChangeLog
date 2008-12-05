@@ -1,3 +1,8 @@
+2008-12-05  kei-os <keisuke.aono@gmail.com>
+
+	* statementの実装を開始。delayOrEventControlの定義まで実装した。
+	* lvalue, concatenationを実装。
+
 2008-12-04  kei-os <keisuke.aono@gmail.com>
 
 	* regDeclarationを実装した。

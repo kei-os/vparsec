@@ -187,6 +187,7 @@ moduleItem = try(lexeme inputDeclaration)
          <|> try(lexeme inoutDeclaration)
          <|> try(lexeme regDeclaration)
          <|> try(lexeme netDeclaration)
+         <|> try(lexeme alwaysStatement)
          <?> "moduleItem"
 
 inputDeclaration :: Parser String
@@ -298,30 +299,30 @@ registerVariable = do { a <- lexeme identifier
 
 alwaysStatement :: Parser String
 alwaysStatement = do { a <- symbol "always"
-                     ; b <- statement
+                     ; b <- lexeme statement
                      ; return $ a ++ b }
               <?> "alwaysStatement"
 
 statementOrNull :: Parser String
-statementOrNull = try(statement) <|> string ""
+statementOrNull = try(lexeme statement) <|> string ""
               <?> "statementOrNull"
 
 -- XXX this BNF is from IEEE spec.
 statement :: Parser String
-statement = do { a <- try(blockingAssignment); semi; return a }
---        <|> do { a <- try(nonBlockingAssignment; semi; return a) }
-        <|> do { a <- try(proceduralContinuousAssignments); semi; return a }     -- XXX TODO impl
-        <|> do { a <- try(proceduralTimingControlStatement); semi; return a }    -- XXX TODO impl
-        <|> do { a <- try(conditionalStatement); semi; return a }
---        <|> do { a <- try(caseStatement; semi; return a) }
---        <|> do { a <- try(loopStatement; semi; return a) }
---        <|> do { a <- try(waitStatement; semi; return a) }
---        <|> do { a <- try(disableStatement; semi; return a) }
---        <|> do { a <- try(eventTrigger; semi; return a) }
-        <|> do { a <- try(seqBlock); semi; return a }        -- XXX TODO impl
---        <|> do { a <- try(parBlock; semi; return a) }
---        <|> do { a <- try(taskEnable; semi; return a) }
---        <|> do { a <- try(systemTaskEnable; semi; return a) }
+statement = do { a <- try(lexeme blockingAssignment); semi; return a }
+--        <|> do { a <- try(lexeme nonBlockingAssignment; semi; return a) }
+        <|> do { a <- try(lexeme proceduralContinuousAssignments); semi; return a }     -- XXX TODO impl
+        <|> do { a <- try(lexeme proceduralTimingControlStatement); semi; return a }    -- XXX TODO impl
+        <|> do { a <- try(lexeme conditionalStatement); semi; return a }
+--        <|> do { a <- try(lexeme caseStatement; semi; return a) }
+--        <|> do { a <- try(lexeme loopStatement; semi; return a) }
+--        <|> do { a <- try(lexeme waitStatement; semi; return a) }
+--        <|> do { a <- try(lexeme disableStatement; semi; return a) }
+--        <|> do { a <- try(lexeme eventTrigger; semi; return a) }
+        <|> do { a <- try(lexeme seqBlock); semi; return a }        -- XXX TODO impl
+--        <|> do { a <- try(lexeme parBlock; semi; return a) }
+--        <|> do { a <- try(lexeme taskEnable; semi; return a) }
+--        <|> do { a <- try(lexeme systemTaskEnable; semi; return a) }
         <?> "statement"
 
 blockingAssignment :: Parser String
@@ -363,7 +364,20 @@ eventControl :: Parser String
 eventControl = string ""
           <?> "eventControl"
 
--- Expression
+-- Expressions
+
+lvalue :: Parser String
+lvalue = identifier
+    <|> do { a <- lexeme identifier
+           ; b <- brackets expression
+           ; return $ a ++ b }
+    <|> do { a <- lexeme identifier
+           ; b <- range
+           ; return $ a ++ b }
+    <|> concatenation
+    <?> "lvalue"
+
+
 -- XXX omit left recursion
 expression :: Parser String
 expression = do { a <- optExpression
@@ -437,7 +451,19 @@ string' = string ""             -- XXX FIXME
 
 questionMark :: Parser String
 questionMark = symbol "?"       --- XXX FIXME
+ 
+commaExpression :: Parser String
+commaExpression = do { a <- comma
+                     ; b <- expression
+                     ; return $ a ++ b }
 
+concatenation :: Parser String
+concatenation = braces concatenation_
+           <?> "concatenation"
+    where
+        concatenation_ = do { a <- lexeme expression
+                            ; b <- lexeme(many commaExpression)
+                            ; return $ a ++ (concat b) }
 
 {--
 parameterDeclaration :: Parser String
@@ -484,63 +510,10 @@ eventDeclaration = string ""
 initialStatement :: Parser String
 initialStatement = string ""
 
-alwaysStatement :: Parser String
-alwaysStatement = string ""
-
 task' :: Parser String
 task' = string ""
 
 function' :: Parser String
 function' = string ""
-
-
-{- XXX use lexeme parser
-lvalue :: Parser String
-lvalue = do { a <- try(lvalueIdentifier) ; return a }
-     <|> do { a <- concatenation ; return a }
-     <?> "lvalue"
-        where
-            lvalueIdentifier :: Parser String
-            lvalueIdentifier
-                = do { a <- try(lvalueIdentifier_) ; return a }
-              <|> do { a <- try(lvalueIdentifier__) ; return a }
-              <|> do { a <- string ""; return a }
-            lvalueIdentifier_ :: Parser String 
-            lvalueIdentifier_ 
-                = do { a <- identifier
-                     ; spaces
-                     ; b <- string "["
-                     ; spaces
-                     ; c <- expression
-                     ; spaces
-                     ; d <- string "]"
-                     ; return $ a ++ b ++ c ++ d }
-            lvalueIdentifier__ :: Parser String 
-            lvalueIdentifier__
-                = do { a <- identifier
-                     ; spaces
-                     ; b <- string "["
-                     ; spaces
-                     ; c <- constantExpression
-                     ; spaces
-                     ; d <- string ":"
-                     ; spaces
-                     ; e <- constantExpression
-                     ; spaces
-                     ; f <- string "]"
-                     ; return $ a ++ b ++ c ++ d ++ e ++ f }
--}
-
-lvalue :: Parser String
-lvalue = lexeme identifier
-    <?> "lvalue"
-
-concatenation :: Parser String
-concatenation = braces concatenation_
-           <?> "concatenation"
-    where
-        concatenation_ = do { a <- lexeme expression
-                            ; b <- lexeme(many commaExpression)
-                            ; return $ a ++ (concat b) }
-
 --}
+
