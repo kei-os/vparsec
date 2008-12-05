@@ -3,6 +3,7 @@
 	* statementの実装を開始。delayOrEventControlの定義まで実装した。
 	* lvalue, concatenationを実装。
 	* assignmentを実装。
+	* blockingAssignmentを実装。
 
 2008-12-04  kei-os <keisuke.aono@gmail.com>
 

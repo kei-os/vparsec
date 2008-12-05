@@ -336,9 +336,17 @@ commaAssignment = do { a <- comma
                      ; b <- assignment
                      ; return $ a ++ b } <?> "commaAssignment"
 
-
 blockingAssignment :: Parser String
-blockingAssignment = string ""
+blockingAssignment = try(do { a <- lexeme lvalue
+                            ; b <- symbol "="
+                            ; c <- expression
+                            ; return $ a ++ b ++ c })
+                <|> do { a <- lexeme lvalue
+                       ; b <- symbol "="
+                       ; c <- lexeme delayOrEventControl
+                       ; d <- lexeme expression
+                       ; e <- semi
+                       ; return $ a ++ b ++ c ++ d ++ e }
                 <?> "blockingAssignment"
 
 proceduralContinuousAssignments :: Parser String
