@@ -399,8 +399,18 @@ mintypmaxExpression = try(do { a <- lexeme expression
                   <?> "mintypmaxExpression"
 
 eventControl :: Parser String
-eventControl = string ""
-          <?> "eventControl"
+eventControl = do { a <- symbol "@"
+                  ; b <- lexeme identifier
+                  ; return $ a ++ b }
+           <|> do { a <- symbol "@"
+                  ; b <- parens eventExpression
+                  ; return $ a ++ b }
+           <?> "eventControl"
+
+-- XXX use IEEE's BNF (need to omit left recursion)
+eventExpression :: Parser String
+eventExpression = string ""
+              <?> "eventExpression"
 
 -- Expressions
 
