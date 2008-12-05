@@ -389,7 +389,13 @@ delayControl = try(do{ a <- symbol "#"
            <?> "delayControl"
 
 mintypmaxExpression :: Parser String
-mintypmaxExpression = string ""
+mintypmaxExpression = try(do { a <- lexeme expression
+                         ; b <- colon
+                         ; c <- lexeme expression
+                         ; d <- colon
+                         ; e <- lexeme expression
+                         ; return $ a ++ b ++ c ++ d ++ e })
+                  <|> lexeme expression
                   <?> "mintypmaxExpression"
 
 eventControl :: Parser String
