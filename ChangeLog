@@ -1,3 +1,7 @@
+2008-12-06  kei-os <keisuke.aono@gmail.com>
+
+	* eventExpressionを実装。左再帰の除去をしている。(tryは悩んだが使わなかった)
+
 2008-12-05  kei-os <keisuke.aono@gmail.com>
 
 	* statementの実装を開始。delayOrEventControlの定義まで実装した。

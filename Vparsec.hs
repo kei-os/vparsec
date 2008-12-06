@@ -409,7 +409,18 @@ eventControl = do { a <- symbol "@"
 
 -- XXX use IEEE's BNF (need to omit left recursion)
 eventExpression :: Parser String
-eventExpression = string ""
+eventExpression = lexeme expression
+              <|> lexeme identifier
+              <|> do { a <- symbol "posedge"
+                     ; b <- lexeme expression
+                     ; return $ a ++ b }
+              <|> do { a <- symbol "negedge"
+                      ; b <- lexeme expression
+                      ; return $ a ++ b }
+              <|> do { a <- lexeme expression
+                     ; b <- symbol "or"
+                     ; c <- lexeme expression
+                     ; return $ a ++ b ++ c }
               <?> "eventExpression"
 
 -- Expressions
