@@ -304,25 +304,25 @@ alwaysStatement = do { a <- symbol "always"
               <?> "alwaysStatement"
 
 statementOrNull :: Parser String
-statementOrNull = try(lexeme statement) <|> string ""
+statementOrNull = try(lexeme statement) <|> semi
               <?> "statementOrNull"
 
 -- XXX this BNF is from IEEE spec.
 statement :: Parser String
-statement = do { a <- try(lexeme blockingAssignment); semi; return a }
+statement = try(do { a <- lexeme blockingAssignment; semi; return a })
 --        <|> do { a <- try(lexeme nonBlockingAssignment; semi; return a) }
-        <|> do { a <- try(lexeme proceduralContinuousAssignments); semi; return a }     -- XXX TODO impl
-        <|> do { a <- try(lexeme proceduralTimingControlStatement); semi; return a }    -- XXX TODO impl
-        <|> do { a <- try(lexeme conditionalStatement); semi; return a }
---        <|> do { a <- try(lexeme caseStatement; semi; return a) }
---        <|> do { a <- try(lexeme loopStatement; semi; return a) }
---        <|> do { a <- try(lexeme waitStatement; semi; return a) }
---        <|> do { a <- try(lexeme disableStatement; semi; return a) }
---        <|> do { a <- try(lexeme eventTrigger; semi; return a) }
-        <|> do { a <- try(lexeme seqBlock); semi; return a }        -- XXX TODO impl
---        <|> do { a <- try(lexeme parBlock; semi; return a) }
---        <|> do { a <- try(lexeme taskEnable; semi; return a) }
---        <|> do { a <- try(lexeme systemTaskEnable; semi; return a) }
+--        <|> do { a <- try(lexeme proceduralContinuousAssignments); semi; return a }     -- XXX TODO impl
+        <|> try(do { a <- lexeme proceduralTimingControlStatement; return a })    -- XXX TODO impl
+        <|> try(do { a <- lexeme conditionalStatement; return a })
+--        <|> do { a <- try(lexeme caseStatement; return a) }
+--        <|> do { a <- try(lexeme loopStatement; return a) }
+--        <|> do { a <- try(lexeme waitStatement; return a) }
+--        <|> do { a <- try(lexeme disableStatement; return a) }
+--        <|> do { a <- try(lexeme eventTrigger; return a) }
+        <|> try(do { a <- lexeme seqBlock; return a })        -- XXX TODO impl
+--        <|> do { a <- try(lexeme parBlock; return a) }
+--        <|> do { a <- try(lexeme taskEnable; return a) }
+--        <|> do { a <- try(lexeme systemTaskEnable; return a) }
         <?> "statement"
 
 assignment :: Parser String
@@ -369,7 +369,7 @@ seqBlock = string ""
 
 delayOrEventControl :: Parser String
 delayOrEventControl = try(delayControl)
-                  <|> try(eventControl)
+                  <|> try(do { a <- eventControl; return a })
                   <|> do { a <- symbol "repeat"
                          ; b <- parens expression
                          ; c <- eventControl
@@ -399,9 +399,9 @@ mintypmaxExpression = try(do { a <- lexeme expression
                   <?> "mintypmaxExpression"
 
 eventControl :: Parser String
-eventControl = do { a <- symbol "@"
+eventControl = try(do { a <- symbol "@"
                   ; b <- lexeme identifier
-                  ; return $ a ++ b }
+                  ; return $ a ++ b })
            <|> do { a <- symbol "@"
                   ; b <- parens eventExpression
                   ; return $ a ++ b }
@@ -409,19 +409,29 @@ eventControl = do { a <- symbol "@"
 
 -- XXX use IEEE's BNF (need to omit left recursion)
 eventExpression :: Parser String
-eventExpression = lexeme expression
-              <|> lexeme identifier
-              <|> do { a <- symbol "posedge"
-                     ; b <- lexeme expression
+eventExpression = do { a <- optEventExpression
+                     ; b <- eventExpression_
                      ; return $ a ++ b }
-              <|> do { a <- symbol "negedge"
-                      ; b <- lexeme expression
-                      ; return $ a ++ b }
-              <|> do { a <- lexeme expression
-                     ; b <- symbol "or"
-                     ; c <- lexeme expression
-                     ; return $ a ++ b ++ c }
               <?> "eventExpression"
+
+optEventExpression :: Parser String
+optEventExpression = try(do { a <- symbol "posedge"
+                            ; b <- lexeme expression
+                            ; return $ a ++ b })
+                 <|> try(do { a <- symbol "negedge"
+                            ; b <- lexeme expression
+                            ; return $ a ++ b })
+                 <|> try(lexeme identifier)
+                 <|> try(lexeme expression)
+                 <?> "optEventExpression"
+
+eventExpression_ :: Parser String
+eventExpression_ = do { a <- symbol "or"
+                      ; b <- lexeme eventExpression
+                      ; c <- eventExpression_ 
+                      ; return $ a ++ b ++ c }
+               <|> string ""
+               <?> "eventExpression_"
 
 -- Expressions
 

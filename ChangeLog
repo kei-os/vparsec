@@ -1,3 +1,7 @@
+2008-12-07  kei-os <keisuke.aono@gmail.com>
+
+	* statementOrNull, statementブロックの bugfix (semiのつけすぎ、つけ忘れ)
+
 2008-12-06  kei-os <keisuke.aono@gmail.com>
 
 	* eventExpressionを実装。左再帰の除去をしている。(tryは悩んだが使わなかった)
