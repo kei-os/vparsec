@@ -497,7 +497,16 @@ binaryOperator = try(symbol "+")
             -- XXX TODO and more...
 
 primary :: Parser String
-primary = number
+primary = try(number)
+      <|> try(do { a <- identifier
+                 ; b <- range
+                 ; return $ a ++ b })
+      <|> try(brackets expression)
+      <|> try(lexeme identifier) 
+      <|> try(concatenation)
+--      <|> try(multipleConcatenation)      -- XXX TODO impl
+--      <|> try(functionCall)               -- XXX TODO impl
+      <|> try(parens mintypmaxExpression)
       <?> "primary"
 
 number :: Parser String
@@ -534,6 +543,13 @@ concatenation = braces concatenation_
                             ; b <- lexeme(many commaExpression)
                             ; return $ a ++ (concat b) }
 
+multipleConcatenation :: Parser String      -- XXX TODO impl
+multipleConcatenation = string ""
+                   <?> "multipleConcatenation"
+
+functionCall :: Parser String       -- XXX TODO impl
+functionCall = string ""
+           <?> "functionCall"
 {--
 parameterDeclaration :: Parser String
 parameterDeclaration = string ""        -- XXX FIXME
