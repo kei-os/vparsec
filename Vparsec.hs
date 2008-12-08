@@ -295,6 +295,11 @@ registerVariable = do { a <- lexeme identifier
                       ; return $ a ++ b }
               <?> "registerVariable"
 
+-- XXX TODO impl
+blockDeclaration :: Parser String
+blockDeclaration = string ""
+              <?> "blockDeclaration"
+
 -- Behavioral Statements
 
 alwaysStatement :: Parser String
@@ -385,8 +390,19 @@ conditionalStatement = do { a <- symbol "if"
                                  ; return $ a ++ b }
 
 seqBlock :: Parser String
-seqBlock = string ""
+seqBlock = do { a <- symbol "begin"
+              ; b <- seqBlock_
+              ; c <- symbol "end"
+              ; return $ a ++ b ++ c }
        <?> "seqBlock"
+    where
+        seqBlock_ = do {a <- many statement; return (concat a)}
+                <|> do { a <- colon
+                       ; b <- identifier
+                       ; c <- many blockDeclaration
+                       ; d <- many statement
+                       ; return $ a ++ b ++ (concat c) ++ (concat d) }
+                <?> "seqBlock_"
 
 delayOrEventControl :: Parser String
 delayOrEventControl = try(delayControl)

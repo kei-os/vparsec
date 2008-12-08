@@ -17,9 +17,24 @@ always@(posedge clk or negedge rst_n)
 	if (a)	hoge = 1; 
 	else	hoge = 0;
 
-always@(posedge clk or negedge rst_n)
+always@(posedge clk or negedge rst_n) begin
 	if (a)		foo <= 1;
 	else if (b)	foo <= 2;
 	else		foo <= 3;
+end
+
+always@(hoge) begin
+	if (a) begin
+		bar <= 1;
+		baz <= 1;
+	end else if (b) begin
+		bar <= 2;
+		baz <= 2;
+	end else begin
+		bar <= 3;
+		baz <= 3;
+	end
+end
+
 
 endmodule
