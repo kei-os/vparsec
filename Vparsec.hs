@@ -341,12 +341,12 @@ blockingAssignment = try(do { a <- lexeme lvalue
                             ; b <- symbol "="
                             ; c <- expression
                             ; return $ a ++ b ++ c })
-                <|> do { a <- lexeme lvalue
+                <|> try(do { a <- lexeme lvalue
                        ; b <- symbol "="
                        ; c <- lexeme delayOrEventControl
                        ; d <- lexeme expression
                        ; e <- semi
-                       ; return $ a ++ b ++ c ++ d ++ e }
+                       ; return $ a ++ b ++ c ++ d ++ e })
                 <?> "blockingAssignment"
 
 proceduralContinuousAssignments :: Parser String
@@ -360,8 +360,16 @@ proceduralTimingControlStatement = do { a <- delayOrEventControl
                                <?> "proceduralTimingControlStatement"
 
 conditionalStatement :: Parser String
-conditionalStatement = string ""
+conditionalStatement = do { a <- symbol "if"
+                          ; b <- parens expression
+                          ; c <- statementOrNull
+                          ; d <- try(elseStatementOrNull) <|> string ""
+                          ; return $ a ++ b ++ c ++ d }
                    <?> "conditionalStatement"
+    where
+        elseStatementOrNull = do { a <- symbol "else"
+                                 ; b <- statementOrNull
+                                 ; return $ a ++ b }
 
 seqBlock :: Parser String
 seqBlock = string ""
