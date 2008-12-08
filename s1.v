@@ -16,4 +16,10 @@ wire [1:0]	v2;
 always@(posedge clk or negedge rst_n)
 	if (a)	hoge = 1; 
 	else	hoge = 0;
+
+always@(posedge clk or negedge rst_n)
+	if (a)		foo <= 1;
+	else if (b)	foo <= 2;
+	else		foo <= 3;
+
 endmodule

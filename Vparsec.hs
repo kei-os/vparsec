@@ -310,7 +310,7 @@ statementOrNull = try(lexeme statement) <|> semi
 -- XXX this BNF is from IEEE spec.
 statement :: Parser String
 statement = try(do { a <- lexeme blockingAssignment; semi; return a })
---        <|> do { a <- try(lexeme nonBlockingAssignment; semi; return a) }
+        <|> try(do { a <- lexeme nonBlockingAssignment; semi; return a })
 --        <|> do { a <- try(lexeme proceduralContinuousAssignments); semi; return a }     -- XXX TODO impl
         <|> try(do { a <- lexeme proceduralTimingControlStatement; return a })    -- XXX TODO impl
         <|> try(do { a <- lexeme conditionalStatement; return a })
@@ -348,6 +348,19 @@ blockingAssignment = try(do { a <- lexeme lvalue
                        ; e <- semi
                        ; return $ a ++ b ++ c ++ d ++ e })
                 <?> "blockingAssignment"
+
+nonBlockingAssignment :: Parser String
+nonBlockingAssignment = try(do { a <- lexeme lvalue
+                            ; b <- symbol "<="
+                            ; c <- expression
+                            ; return $ a ++ b ++ c })
+                <|> try(do { a <- lexeme lvalue
+                       ; b <- symbol "<="
+                       ; c <- lexeme delayOrEventControl
+                       ; d <- lexeme expression
+                       ; e <- semi
+                       ; return $ a ++ b ++ c ++ d ++ e })
+                <?> "nonBlockingAssignment"
 
 proceduralContinuousAssignments :: Parser String
 proceduralContinuousAssignments = string ""
