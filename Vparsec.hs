@@ -190,6 +190,11 @@ moduleItem = try(lexeme inputDeclaration)
          <|> try(lexeme alwaysStatement)
          <?> "moduleItem"
 
+-- XXX TODO
+parameterDeclaration :: Parser String
+parameterDeclaration = string ""
+
+
 inputDeclaration :: Parser String
 inputDeclaration = do { a <- symbol "input"
                       ; b <- range <|> string ""
@@ -295,10 +300,30 @@ registerVariable = do { a <- lexeme identifier
                       ; return $ a ++ b }
               <?> "registerVariable"
 
--- XXX TODO impl
+-- XXX TODO
+timeDeclaration :: Parser String
+timeDeclaration = string ""
+
+integerDeclaration :: Parser String
+integerDeclaration = string ""
+
+-- XXX TODO
+realDeclaration :: Parser String
+realDeclaration = string ""
+
+-- XXX TODO
+eventDeclaration :: Parser String
+eventDeclaration = string ""
+
+-- XXX TODO impl (check try and lexeme)
 blockDeclaration :: Parser String
-blockDeclaration = string ""
-              <?> "blockDeclaration"
+blockDeclaration = parameterDeclaration
+               <|> regDeclaration
+               <|> integerDeclaration
+               <|> realDeclaration
+               <|> timeDeclaration
+               <|> eventDeclaration
+               <?> "blockDeclaration"
 
 -- Behavioral Statements
 
@@ -588,8 +613,6 @@ functionCall :: Parser String       -- XXX TODO impl
 functionCall = string ""
            <?> "functionCall"
 {--
-parameterDeclaration :: Parser String
-parameterDeclaration = string ""        -- XXX FIXME
 
 -- XXX TODO : drive_strength, expandrange, delay
 listOfVariables :: Parser String
@@ -598,26 +621,10 @@ listOfVariables = do { a <- nettype
                      ; c <- semi
                      ; return $ a ++ b ++ c } <?> "listOfVariables"
 
-
-
 listOfAssignments :: Parser String
 listOfAssignments = do { a <- lexeme assignment
                        ; b <- many commaAssignment
                        ; return $ a ++ (concat b) } <?> "listOfAssignments"
-
-
-
-timeDeclaration :: Parser String
-timeDeclaration = string ""
-
-integerDeclaration :: Parser String
-integerDeclaration = string ""
-
-realDeclaration :: Parser String
-realDeclaration = string ""
-
-eventDeclaration :: Parser String
-eventDeclaration = string ""
 
 initialStatement :: Parser String
 initialStatement = string ""

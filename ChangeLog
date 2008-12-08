@@ -3,6 +3,7 @@
 	* conditionalStatementを実装。
 	* nonBlockingAssignmentを実装。
 	* seqBlockを実装。
+	* blockDeclarationを実装。(ただし tryと lexemeの確認が必要)
 
 2008-12-07  kei-os <keisuke.aono@gmail.com>
 
