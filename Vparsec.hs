@@ -190,6 +190,7 @@ moduleItem = try(lexeme parameterDeclaration)
          <|> try(lexeme timeDeclaration)
          <|> try(lexeme integerDeclaration)
          <|> try(lexeme netDeclaration)
+         <|> try(lexeme initialStatement)
          <|> try(lexeme alwaysStatement)
          <?> "moduleItem"
 
@@ -357,6 +358,12 @@ blockDeclaration = try(lexeme parameterDeclaration)
                <?> "blockDeclaration"
 
 -- Behavioral Statements
+
+initialStatement :: Parser String
+initialStatement = do { a <- symbol "initial"
+                      ; b <- lexeme statement
+                      ; return $ a ++ b }
+             <?> "initialStatement"
 
 alwaysStatement :: Parser String
 alwaysStatement = do { a <- symbol "always"
@@ -657,8 +664,6 @@ listOfAssignments = do { a <- lexeme assignment
                        ; b <- many commaAssignment
                        ; return $ a ++ (concat b) } <?> "listOfAssignments"
 
-initialStatement :: Parser String
-initialStatement = string ""
 
 task' :: Parser String
 task' = string ""

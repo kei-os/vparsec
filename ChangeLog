@@ -1,6 +1,7 @@
 2008-12-10  kei-os <keisuke.aono@gmail.com>
 
 	* parameterDeclarationを実装。
+	* initialStatementを実装。
 
 2008-12-09  kei-os <keisuke.aono@gmail.com>
 

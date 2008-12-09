@@ -20,6 +20,13 @@ integer int_a, int_b, int_hogehogec;
 
 parameter param = 10;
 
+initial hoge = 100;
+
+initial begin
+	foo = 10;
+	bar = 20;
+end
+
 always@(posedge clk or negedge rst_n)
 	if (a)	hoge = 1; 
 	else	hoge = 0;
