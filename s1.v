@@ -15,6 +15,8 @@ wire		w1;
 wire [1:0]	v2;
 time t1;
 time t2, t3;
+integer int1;
+integer int_a, int_b, int_hogehogec;
 
 always@(posedge clk or negedge rst_n)
 	if (a)	hoge = 1; 

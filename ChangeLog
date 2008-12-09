@@ -5,6 +5,7 @@
 	* seqBlockを実装。
 	* blockDeclarationを実装。(ただし tryと lexemeの確認が必要)
 	* timeDeclarationを実装。
+	* integerDeclarationを実装。
 
 2008-12-07  kei-os <keisuke.aono@gmail.com>
 
