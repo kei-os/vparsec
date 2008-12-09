@@ -182,7 +182,8 @@ constantExpression = expression
 
 {--------- XXX not yet ---------}
 moduleItem :: Parser String
-moduleItem = try(lexeme inputDeclaration)
+moduleItem = try(lexeme parameterDeclaration)
+         <|> try(lexeme inputDeclaration)
          <|> try(lexeme outputDeclaration)
          <|> try(lexeme inoutDeclaration)
          <|> try(lexeme regDeclaration)
@@ -192,10 +193,31 @@ moduleItem = try(lexeme inputDeclaration)
          <|> try(lexeme alwaysStatement)
          <?> "moduleItem"
 
--- XXX TODO
 parameterDeclaration :: Parser String
-parameterDeclaration = string ""
+parameterDeclaration = do { a <- symbol "parameter"
+                          ; b <- listOfParamAssignment
+                          ; c <- semi
+                          ; return $ a ++ b ++ c }
+                  <?> "parameterDeclaration"
 
+listOfParamAssignment :: Parser String
+listOfParamAssignment = do { a <- paramAssignment
+                           ; b <- try(many commaParamAssignment)
+                           ; return $ a ++ (concat b) }
+                  <?> "listOfParamAssignment"
+
+paramAssignment :: Parser String
+paramAssignment = do { a <- lexeme identifier
+                     ; b <- symbol "="
+                     ; c <- lexeme constantExpression
+                     ; return $ a ++ b ++ c }
+             <?> "paramAssignment"
+
+commaParamAssignment :: Parser String
+commaParamAssignment = do { a <- comma
+                          ; b <- try(paramAssignment)
+                          ; return $ a ++ b }
+                  <?> "commaParamAssignment"
 
 inputDeclaration :: Parser String
 inputDeclaration = do { a <- symbol "input"
@@ -326,12 +348,12 @@ eventDeclaration = string ""
 
 -- XXX TODO impl (check try and lexeme)
 blockDeclaration :: Parser String
-blockDeclaration = parameterDeclaration
-               <|> try(regDeclaration)
-               <|> integerDeclaration
---               <|> realDeclaration
-               <|> try(timeDeclaration)
---               <|> eventDeclaration
+blockDeclaration = try(lexeme parameterDeclaration)
+               <|> try(lexeme regDeclaration)
+               <|> try(lexeme integerDeclaration)
+--               <|> try(lexeme realDeclaration)
+               <|> try(lexeme timeDeclaration)
+--               <|> try(lexeme eventDeclaration)
                <?> "blockDeclaration"
 
 -- Behavioral Statements

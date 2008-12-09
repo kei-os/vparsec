@@ -18,6 +18,8 @@ time t2, t3;
 integer int1;
 integer int_a, int_b, int_hogehogec;
 
+parameter param = 10;
+
 always@(posedge clk or negedge rst_n)
 	if (a)	hoge = 1; 
 	else	hoge = 0;
