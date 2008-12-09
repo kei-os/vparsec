@@ -186,6 +186,7 @@ moduleItem = try(lexeme inputDeclaration)
          <|> try(lexeme outputDeclaration)
          <|> try(lexeme inoutDeclaration)
          <|> try(lexeme regDeclaration)
+         <|> try(lexeme timeDeclaration)
          <|> try(lexeme netDeclaration)
          <|> try(lexeme alwaysStatement)
          <?> "moduleItem"
@@ -300,9 +301,12 @@ registerVariable = do { a <- lexeme identifier
                       ; return $ a ++ b }
               <?> "registerVariable"
 
--- XXX TODO
 timeDeclaration :: Parser String
-timeDeclaration = string ""
+timeDeclaration = do { a <- symbol "time"
+                     ; b <- listOfRegisterVariables
+                     ; c <- semi
+                     ; return $ a ++ b ++ c }
+              <?> "timeDeclaration"
 
 integerDeclaration :: Parser String
 integerDeclaration = string ""
@@ -318,11 +322,11 @@ eventDeclaration = string ""
 -- XXX TODO impl (check try and lexeme)
 blockDeclaration :: Parser String
 blockDeclaration = parameterDeclaration
-               <|> regDeclaration
-               <|> integerDeclaration
-               <|> realDeclaration
-               <|> timeDeclaration
-               <|> eventDeclaration
+               <|> try(regDeclaration)
+--               <|> integerDeclaration
+--               <|> realDeclaration
+               <|> try(timeDeclaration)
+--               <|> eventDeclaration
                <?> "blockDeclaration"
 
 -- Behavioral Statements
