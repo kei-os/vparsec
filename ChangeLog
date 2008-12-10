@@ -2,6 +2,8 @@
 
 	* parameterDeclarationを実装。
 	* initialStatementを実装。
+	* proceduralContinuousAssignmentを実装。(当面必要ないものは未実装)
+	* continuousAssignmentを実装。
 
 2008-12-09  kei-os <keisuke.aono@gmail.com>
 

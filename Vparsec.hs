@@ -183,6 +183,7 @@ constantExpression = expression
 {--------- XXX not yet ---------}
 moduleItem :: Parser String
 moduleItem = try(lexeme parameterDeclaration)
+         <|> try(lexeme continuousAssign)
          <|> try(lexeme inputDeclaration)
          <|> try(lexeme outputDeclaration)
          <|> try(lexeme inoutDeclaration)
@@ -359,6 +360,30 @@ blockDeclaration = try(lexeme parameterDeclaration)
 
 -- Behavioral Statements
 
+continuousAssign :: Parser String
+continuousAssign = do { a <- symbol "assign"
+                      ; b <- {- [drive_strength] [delay3] -} listOfNetAssignments
+                      ; c <- semi
+                      ; return $ a ++ b ++ c }
+              <?> "continuousAssign"
+
+listOfNetAssignments :: Parser String
+listOfNetAssignments = do { a <- netAssignment
+                          ; b <- many (lexeme commaNetAssignment)
+                          ; return $ a ++ (concat b) }
+                   <?> "listOfNetAssignments"
+    where
+        commaNetAssignment = do { a <- comma
+                                ; b <- netAssignment
+                                ; return $ a ++ b }
+
+netAssignment :: Parser String
+netAssignment = do { a <- lexeme lvalue
+                   ; b <- symbol "="
+                   ; c <- lexeme expression
+                   ; return $ a ++ b ++ c }
+            <?> "netAssignment"
+
 initialStatement :: Parser String
 initialStatement = do { a <- symbol "initial"
                       ; b <- lexeme statement
@@ -379,8 +404,8 @@ statementOrNull = try(lexeme statement) <|> semi
 statement :: Parser String
 statement = try(do { a <- lexeme blockingAssignment; semi; return a })
         <|> try(do { a <- lexeme nonBlockingAssignment; semi; return a })
---        <|> do { a <- try(lexeme proceduralContinuousAssignments); semi; return a }     -- XXX TODO impl
-        <|> try(do { a <- lexeme proceduralTimingControlStatement; return a })    -- XXX TODO impl
+        <|> try(do { a <- lexeme proceduralContinuousAssignments; semi; return a })
+        <|> try(do { a <- lexeme proceduralTimingControlStatement; return a })
         <|> try(do { a <- lexeme conditionalStatement; return a })
 --        <|> do { a <- try(lexeme caseStatement; return a) }
 --        <|> do { a <- try(lexeme loopStatement; return a) }
@@ -431,7 +456,18 @@ nonBlockingAssignment = try(do { a <- lexeme lvalue
                 <?> "nonBlockingAssignment"
 
 proceduralContinuousAssignments :: Parser String
-proceduralContinuousAssignments = string ""
+proceduralContinuousAssignments = try(do { a <- symbol "assign"
+                                         ; b <- lexeme regAssignment
+                                         ; c <- semi
+                                         ; return $ a ++ b ++ c}) 
+                              <|> try(do { a <- symbol "deassign"
+                                         ; b <- lexeme reglValue
+                                         ; c <- semi
+                                         ; return $ a ++ b ++ c })
+--                              <|> force regAssignment;    -- not impl
+--                              <|> force netAssignment;    -- not impl
+--                              <|> release reglValue;      -- not impl
+--                              <|> release netlValue;      -- not impl
                               <?> "proceduralContinuousAssignments"
 
 proceduralTimingControlStatement :: Parser String
@@ -451,6 +487,13 @@ conditionalStatement = do { a <- symbol "if"
         elseStatementOrNull = do { a <- symbol "else"
                                  ; b <- statementOrNull
                                  ; return $ a ++ b }
+
+regAssignment :: Parser String
+regAssignment = do { a <- lexeme reglValue
+                   ; b <- symbol "="
+                   ; c <- lexeme expression
+                   ; return $ a ++ b ++ c }
+            <?> "regAssignment"
 
 seqBlock :: Parser String
 seqBlock = do { a <- symbol "begin"
@@ -546,6 +589,10 @@ lvalue = identifier
     <|> concatenation
     <?> "lvalue"
 
+-- same as lvalue
+reglValue :: Parser String
+reglValue = lvalue
+       <?> "reglValue"
 
 -- XXX omit left recursion
 expression :: Parser String
@@ -664,11 +711,5 @@ listOfAssignments = do { a <- lexeme assignment
                        ; b <- many commaAssignment
                        ; return $ a ++ (concat b) } <?> "listOfAssignments"
 
-
-task' :: Parser String
-task' = string ""
-
-function' :: Parser String
-function' = string ""
 --}
 

@@ -26,6 +26,7 @@ initial begin
 	foo = 10;
 	bar = 20;
 end
+assign a = 10;
 
 always@(posedge clk or negedge rst_n)
 	if (a)	hoge = 1; 
