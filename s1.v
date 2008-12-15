@@ -28,10 +28,6 @@ initial begin
 end
 assign a = 10;
 
-always@(posedge clk or negedge rst_n)
-	if (a)	hoge = 1; 
-	else	hoge = 0;
-
 always@(posedge clk or negedge rst_n) begin
 	if (a)		foo <= 1;
 	else if (b)	foo <= 2;

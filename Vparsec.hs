@@ -658,7 +658,11 @@ primary = try(number)
 
 number :: Parser String
 number = lexeme decimalNumber
-   <?> "number"
+--     <|> lexeme octalNumber
+--     <|> lexeme binaryNumber
+--     <|> lexeme hexNumber
+--     <|> lexeme realNumber
+     <?> "number"
 
 decimalNumber :: Parser String
 {-
@@ -670,6 +674,74 @@ decimalNumber = do { a <- try(oneOf "+-") <|> string ""     -- XXX FIXME : Char 
 decimalNumber = do { a <- many1(digit <|> char '_'); return a }     -- work around
           <?> "decimalNumber"
 
+-- XXX TODO impl
+octalNumber :: Parser String
+octalNumber = string ""
+        <?> "octalNumber"
+
+-- XXX TODO impl
+binaryNumber :: Parser String
+binaryNumber = string ""
+        <?> "binaryNumber"
+
+-- XXX TODO impl
+hexNumber :: Parser String
+hexNumber = string ""
+        <?> "hexNumber"
+
+-- XXX TODO impl
+realNumber :: Parser String
+realNumber = string ""
+        <?> "realNumber"
+----
+
+sign :: Parser String
+sign = do { a <- oneOf "+-"; return [a] }
+    <?> "sign"
+
+size :: Parser String
+size = unsignedNumber
+    <?> "size"
+
+unsignedNumber :: Parser String
+unsignedNumber = do { a <- decimalDigit
+                    ; b <- many _decimalDigit
+                    ; return $ a ++ (concat b) }
+            <?> "unsignedNumber"
+    where
+        _decimalDigit = string "_" <|> decimalDigit
+
+decimalBase :: Parser String
+decimalBase = try (string "'d") <|> string "'D"
+          <?> "decimalBase"
+
+binaryBase :: Parser String
+binaryBase = try (string "'b") <|> string "'B"
+        <?> "binaryBase"
+
+octalBase :: Parser String
+octalBase = try (string "'o") <|> string "'O"
+       <?> "octalBase"
+
+hexBase :: Parser String
+hexBase = try (string "'h") <|> string "'H"
+     <?> "hexBase"
+
+decimalDigit :: Parser String
+decimalDigit = do { a <- digit; return [a] }
+           <?> "decimalDigit"
+
+binaryDigit :: Parser String
+binaryDigit = do { a <- oneOf "xXzZ01"; return [a] }
+         <?> "binaryDigit"
+
+octalDigit :: Parser String
+octalDigit = do { a <- oneOf "xXzZ" <|> octDigit; return [a] }
+        <?> "octalDigit"
+
+_hexDigit :: Parser String
+_hexDigit = do { a <- oneOf "xXzZ" <|> hexDigit; return [a] }
+        <?> "_hexDigit"
 
 string' :: Parser String
 string' = string ""             -- XXX FIXME
@@ -697,19 +769,3 @@ multipleConcatenation = string ""
 functionCall :: Parser String       -- XXX TODO impl
 functionCall = string ""
            <?> "functionCall"
-{--
-
--- XXX TODO : drive_strength, expandrange, delay
-listOfVariables :: Parser String
-listOfVariables = do { a <- nettype
-                     ; b <- lexeme listOfAssignments
-                     ; c <- semi
-                     ; return $ a ++ b ++ c } <?> "listOfVariables"
-
-listOfAssignments :: Parser String
-listOfAssignments = do { a <- lexeme assignment
-                       ; b <- many commaAssignment
-                       ; return $ a ++ (concat b) } <?> "listOfAssignments"
-
---}
-
