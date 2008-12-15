@@ -664,15 +664,16 @@ number = lexeme decimalNumber
 --     <|> lexeme realNumber
      <?> "number"
 
+-- XXX need lexeme??
 decimalNumber :: Parser String
-{-
-decimalNumber = do { a <- try(oneOf "+-") <|> string ""     -- XXX FIXME : Char to String
-                   ; b <- many(digit <|> char '_')
-                   ; return $ a ++ (concat b) }
+decimalNumber = try(do { a <- size <|> string ""
+                       ; b <- decimalBase
+                       ; c <- unsignedNumber
+                       ; return $ a ++ b ++ c })
+            <|> try(do { a <- sign <|> string ""
+                       ; b <- unsignedNumber
+                       ; return $ a ++ b })
             <?> "decimalNumber"
--}
-decimalNumber = do { a <- many1(digit <|> char '_'); return a }     -- work around
-          <?> "decimalNumber"
 
 -- XXX TODO impl
 octalNumber :: Parser String

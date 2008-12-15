@@ -1,6 +1,7 @@
 2008-12-15  kei-os <keisuke.aono@gmail.com>
 
 	* sign, size, unsignedNumber, decimalBase, binaryBase, octalBase, hexBase, decimalDigit, binaryDigit, octalDigitを実装。
+	* decimalNumberを実装。
 
 2008-12-10  kei-os <keisuke.aono@gmail.com>
 
