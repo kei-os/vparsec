@@ -48,6 +48,13 @@ commaSep    = P.commaSep lexer
 commaSep1   = P.commaSep1 lexer
 
 
+-- XXX for Module
+data Module = Module
+    { mName     :: String
+    , mPorts    :: String
+    , mItems    :: [String]
+    } deriving (Eq, Show)
+
 {- for tiny parser test  -}
 test :: Show a => Parser a -> String -> IO ()
 test p input
@@ -66,11 +73,11 @@ parseVerilog fname
                 Right x -> print x }
 
 -- Verilog 1995 parser
-verilog1995 :: Parser String
+verilog1995 :: Parser Module
 verilog1995 = description
             <?> "source text!!"
 
-description :: Parser String
+description :: Parser Module
 description = moduleDeclaration <|> udpDeclaration
           <?> "description"
                 
@@ -82,23 +89,25 @@ identifier = do { c <- char '_' <|> letter
                 ; return (c:cs) }
           <?> "identifier"
 
-moduleDeclaration :: Parser String
-moduleDeclaration = do { a <- try(symbol "module")
-                       ; b <- moduleDeclaration_
-                       ; return $ a ++ b }
-                <|> do { a <- try(symbol "macromodule")
-                       ; b <- moduleDeclaration_
-                       ; return $ a ++ b }
+-- XXX Module version
+moduleDeclaration :: Parser Module
+moduleDeclaration = do { try(symbol "module")
+                       ; a <- moduleDeclaration_
+                       ; return a }
+                <|> do { try(symbol "macromodule")
+                       ; a <- moduleDeclaration_
+                       ; return a }
                 <?> "moduleDeclaration"
     where
-        moduleDeclaration_ :: Parser String
+        moduleDeclaration_ :: Parser Module
         moduleDeclaration_
-              = do { a <- lexeme nameOfModule
-                   ; b <- listOfPorts <|> string ""
-                   ; c <- semi
-                   ; d <- lexeme(many moduleItem)
-                   ; e <- symbol "endmodule"
-                   ; return $ a ++ b ++ c ++ (concat d) ++ e }
+              = do { a <- lexeme nameOfModule           -- Name
+                   ; b <- listOfPorts <|> string ""     -- Ports
+                   ; semi
+                   ; c <- lexeme(many moduleItem)       -- Items
+                   ; symbol "endmodule"
+                   ; return (Module { mName = a, mPorts = b, mItems = c })
+                   }
 
 nameOfModule :: Parser String
 nameOfModule = identifier <?> "nameOfModule"
@@ -172,8 +181,8 @@ nameOfVariable :: Parser String
 nameOfVariable = identifier <?> "nameOfVariable"
 
 
-udpDeclaration :: Parser String
-udpDeclaration = string ""
+udpDeclaration :: Parser Module
+udpDeclaration = return (Module { mName = "none", mPorts = "", mItems = [] })
              <?> "udpDeclaration"
 
 constantExpression :: Parser String

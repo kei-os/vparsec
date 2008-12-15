@@ -1,3 +1,7 @@
+2008-12-16  kei-os <keisuke.aono@gmail.com>
+
+	* 抽象構文木(AST)を作り始めた (Module型を用意)。
+
 2008-12-15  kei-os <keisuke.aono@gmail.com>
 
 	* sign, size, unsignedNumber, decimalBase, binaryBase, octalBase, hexBase, decimalDigit, binaryDigit, octalDigitを実装。
