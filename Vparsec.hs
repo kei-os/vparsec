@@ -657,11 +657,11 @@ primary = try(number)
       <?> "primary"
 
 number :: Parser String
-number = lexeme decimalNumber
---     <|> lexeme octalNumber
---     <|> lexeme binaryNumber
---     <|> lexeme hexNumber
+number = lexeme hexNumber
+     <|> lexeme octalNumber
+     <|> lexeme binaryNumber
 --     <|> lexeme realNumber
+     <|> lexeme decimalNumber
      <?> "number"
 
 -- XXX need lexeme??
@@ -675,20 +675,35 @@ decimalNumber = try(do { a <- size <|> string ""
                        ; return $ a ++ b })
             <?> "decimalNumber"
 
--- XXX TODO impl
 octalNumber :: Parser String
-octalNumber = string ""
+octalNumber = try(do { a <- size <|> string ""
+                 ; b <- octalBase
+                 ; c <- octalDigit
+                 ; d <- many octalDigit_
+                 ; return $ a ++ b ++ c ++ (concat d)})
         <?> "octalNumber"
+    where
+        octalDigit_ = string "_" <|> octalDigit
 
--- XXX TODO impl
 binaryNumber :: Parser String
-binaryNumber = string ""
-        <?> "binaryNumber"
+binaryNumber = try(do { a <- size <|> string ""
+                  ; b <- binaryBase
+                  ; c <- binaryDigit
+                  ; d <- many binaryDigit_
+                  ; return $ a ++ b ++ c ++ (concat d) })
+            <?> "binaryNumber"
+    where
+        binaryDigit_ = string "_" <|> binaryDigit
 
--- XXX TODO impl
 hexNumber :: Parser String
-hexNumber = string ""
+hexNumber = try(do { a <- size <|> string ""
+               ; b <- hexBase
+               ; c <- _hexDigit
+               ; d <- many _hexDigit_
+               ; return $ a ++ b ++ c ++ (concat d) })
         <?> "hexNumber"
+    where
+        _hexDigit_ = string "_" <|> _hexDigit
 
 -- XXX TODO impl
 realNumber :: Parser String
@@ -706,11 +721,11 @@ size = unsignedNumber
 
 unsignedNumber :: Parser String
 unsignedNumber = do { a <- decimalDigit
-                    ; b <- many _decimalDigit
+                    ; b <- many decimalDigit_
                     ; return $ a ++ (concat b) }
             <?> "unsignedNumber"
     where
-        _decimalDigit = string "_" <|> decimalDigit
+        decimalDigit_ = string "_" <|> decimalDigit
 
 decimalBase :: Parser String
 decimalBase = try (string "'d") <|> string "'D"
