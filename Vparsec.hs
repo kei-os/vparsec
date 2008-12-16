@@ -51,9 +51,24 @@ commaSep1   = P.commaSep1 lexer
 -- XXX for Module
 data Module = Module
     { mName     :: String
-    , mPorts    :: String
-    , mItems    :: [String]
+    , mPorts    :: [String]
+    , mItems    :: [String]     -- XXX TODO
+--    , mItems    :: [ModuleItem]   -- XXX TODO impl
     } deriving (Eq, Show)
+
+data Port = Port
+    { pName         :: String
+    , pDirection    :: Direction
+    , pRange        :: Range
+    } deriving (Eq, Show)
+
+data Direction = Input | Output deriving (Eq, Show);
+
+data Range = Range
+    { rMin      :: Integer
+    , rMax      :: Integer
+    , rWidth    :: Integer
+    } deriving (Eq, Ord, Show)
 
 {- for tiny parser test  -}
 test :: Show a => Parser a -> String -> IO ()
@@ -61,7 +76,6 @@ test p input
         = case (parse p "" input) of
             Left err -> print err
             Right x -> print x
-
 
 {-- File input version : parseVerilog "your_verilog_file.v" --}
 parseVerilog :: FilePath -> IO ()
@@ -102,7 +116,8 @@ moduleDeclaration = do { try(symbol "module")
         moduleDeclaration_ :: Parser Module
         moduleDeclaration_
               = do { a <- lexeme nameOfModule           -- Name
-                   ; b <- listOfPorts <|> string ""     -- Ports
+--                   ; b <- listOfPorts <|> string ""     -- Ports    XXX
+                   ; b <- listOfPorts
                    ; semi
                    ; c <- lexeme(many moduleItem)       -- Items
                    ; symbol "endmodule"
@@ -112,16 +127,19 @@ moduleDeclaration = do { try(symbol "module")
 nameOfModule :: Parser String
 nameOfModule = identifier <?> "nameOfModule"
 
-listOfPorts :: Parser String
+listOfPorts :: Parser [String]
 listOfPorts = parens listOfPorts_
-            <?> "listOfPorts"
+          <|> do { string ""; return [] }
+          <?> "listOfPorts"
     where
         listOfPorts_ = do { whiteSpace
                           ; a <- lexeme port
                           ; b <- lexeme(many commaPorts)
-                          ; return $ a ++ (concat b) }
+--                          ; return $ a ++ (concat b) }
+                          ; return (a:b) }
                    <?> "listOfPorts_"
 
+-- XXX TODO : AST
 port :: Parser String
 port = try(portExpression)
     <|> do { a <- dot
@@ -137,11 +155,12 @@ port = try(portExpression)
                 <?> "port_"
 
 commaPorts :: Parser String
-commaPorts = do { a <- comma
-                ; b <- port
-                ; return $ a ++ b }
+commaPorts = do { comma
+                ; a <- port
+                ; return a }
           <?> "commaPorts"
 
+-- XXX TODO : AST
 portExpression :: Parser String
 portExpression = try(portReference)
              <|> braces portExpression_
@@ -153,15 +172,17 @@ portExpression = try(portReference)
                                          ; return $ a ++ concat(b) }
 
 commaPortReference :: Parser String
-commaPortReference = do { a <- comma
-                        ; b <- portReference
-                        ; return $ a ++ b }
+commaPortReference = do { comma
+                        ; a <- portReference
+                        ; return a }
                   <?> "commaPortReference"
 
+-- XXX TODO : AST
 portReference :: Parser String
 portReference = do { a <- nameOfVariable
-                   ; b <- portReference_
-                   ; return $ a ++ b }
+--                   ; b <- portReference_    -- XXX get port information
+                   ; portReference_    -- XXX get port information  (currently not use lower block's info)
+                   ; return a }
             <?> "portReference"
     where
         portReference_ :: Parser String
@@ -180,9 +201,10 @@ nameOfPort = identifier <?> "nameOfPort"
 nameOfVariable :: Parser String
 nameOfVariable = identifier <?> "nameOfVariable"
 
+-------------------------------------------------------------------------------------
 
 udpDeclaration :: Parser Module
-udpDeclaration = return (Module { mName = "none", mPorts = "", mItems = [] })
+udpDeclaration = return (Module { mName = "none", mPorts = [], mItems = [] })
              <?> "udpDeclaration"
 
 constantExpression :: Parser String
