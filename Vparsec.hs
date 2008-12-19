@@ -52,16 +52,15 @@ commaSep1   = P.commaSep1 lexer
 data Module = Module
     { mName     :: String
     , mPorts    :: [String]
-    , mItems    :: [ModuleItem]     -- XXX test for AST
+    , mItems    :: [ModuleItem]
     } deriving (Eq, Show)
 
 -- XXX test for AST
 data ModuleItem = MIDECL        String
                 | PARAM_DECL    String
                 | CONT_ASSIGN   String
-                | INPUT_DECL    PortDecl  -- XXX on impl
---                | INPUT_DECL    String      -- XXX on impl
-                | OUTPUT_DECL   String
+                | INPUT_DECL    PortDecl
+                | OUTPUT_DECL   PortDecl
                 | INOUT_DECL    String
                 | REG_DECL      String
                 | TIME_DECL     String
@@ -264,15 +263,12 @@ commaParamAssignment = do { a <- comma
                           ; return $ a ++ b }
                   <?> "commaParamAssignment"
 
---inputDeclaration :: Parser String
 inputDeclaration :: Parser ModuleItem
 inputDeclaration = do { symbol "input"
-                      ; b <- rangeOrEmpty
-                      ; c <- listOfPortIdentifiers
+                      ; r <- rangeOrEmpty
+                      ; l <- listOfPortIdentifiers
                       ; semi
---                      ; return $ a ++ b ++ c ++ d}
---                      ; return $ INPUT_DECL $ a ++ b ++ c ++ d}
-                      ; return $ INPUT_DECL $ PortDecl { pName = c, pRange = b } }
+                      ; return $ INPUT_DECL $ PortDecl { pName = l, pRange = r } }
                <?> "inputDeclaration"
 
 listOfPortIdentifiers :: Parser [String]
@@ -311,16 +307,13 @@ range = do { symbol "["
                     ; return (read max, read min, (read max) - (read min) + 1 ) }   -- XXX TODO improve
               <?> "range_"
 
---outputDeclaration :: Parser String
 outputDeclaration :: Parser ModuleItem
-outputDeclaration = do { a <- symbol "output"
---                       ; b <- range <|> string ""
-                       ; rangeOrEmpty   -- XXX TODO : impl range
---                       ; c <- listOfPortIdentifiers
-                       ; listOfPortIdentifiers
-                       ; d <- semi
---                       ; return $ a ++ b ++ c ++ d }
-                       ; return $ OUTPUT_DECL $ a {-++ b ++ c-} ++ d }
+outputDeclaration = do { symbol "output"
+                       ; r <- rangeOrEmpty
+                       ; l <- listOfPortIdentifiers
+                       ; semi
+--                       ; return $ OUTPUT_DECL $ a {-++ b ++ c-} ++ d }
+                       ; return $ OUTPUT_DECL $ PortDecl { pName = l, pRange = r } }
                 <?> "outputDeclaration"
 
 --inoutDeclaration :: Parser String
