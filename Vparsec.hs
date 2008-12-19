@@ -61,7 +61,7 @@ data ModuleItem = MIDECL        String
                 | CONT_ASSIGN   String
                 | INPUT_DECL    PortDecl
                 | OUTPUT_DECL   PortDecl
-                | INOUT_DECL    String
+                | INOUT_DECL    PortDecl
                 | REG_DECL      String
                 | TIME_DECL     String
                 | INT_DECL      String
@@ -312,20 +312,15 @@ outputDeclaration = do { symbol "output"
                        ; r <- rangeOrEmpty
                        ; l <- listOfPortIdentifiers
                        ; semi
---                       ; return $ OUTPUT_DECL $ a {-++ b ++ c-} ++ d }
                        ; return $ OUTPUT_DECL $ PortDecl { pName = l, pRange = r } }
                 <?> "outputDeclaration"
 
---inoutDeclaration :: Parser String
 inoutDeclaration :: Parser ModuleItem
-inoutDeclaration = do { a <- symbol "inout"
---                      ; b <- range <|> string ""
-                      ; rangeOrEmpty    -- XXX TODO : impl range
---                      ; c <- listOfPortIdentifiers
-                      ; listOfPortIdentifiers
-                      ; d <- semi
---                      ; return $ a ++ b ++ c ++ d }
-                      ; return $ INOUT_DECL $ a {-++ b ++ c-} ++ d }
+inoutDeclaration = do { symbol "inout"
+                      ; r <- rangeOrEmpty
+                      ; l <- listOfPortIdentifiers
+                      ; semi
+                      ; return $ INOUT_DECL $ PortDecl { pName = l, pRange = r } }
                 <?> "inoutDeclaration"
 
 --netDeclaration :: Parser String

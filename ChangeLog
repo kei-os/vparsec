@@ -2,6 +2,7 @@
 
 	* PortDecl, Range を用意して inputDeclarationが ModuleItemを返すようにした。AST化の途中。
 	* outputDeclarationを AST化した。
+	* inoutDeclarationを AST化した。
 
 2008-12-18  kei-os <keisuke.aono@gmail.com>
 
