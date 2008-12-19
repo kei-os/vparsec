@@ -59,13 +59,13 @@ data Module = Module
 data ModuleItem = MIDECL        String
                 | PARAM_DECL    String
                 | CONT_ASSIGN   String
-                | INPUT_DECL    PortDecl
-                | OUTPUT_DECL   PortDecl
-                | INOUT_DECL    PortDecl
-                | REG_DECL      String
+                | INPUT_DECL    Signals
+                | OUTPUT_DECL   Signals
+                | INOUT_DECL    Signals
+                | REG_DECL      Signals
                 | TIME_DECL     String
                 | INT_DECL      String
-                | NET_DECL      String
+                | NET_DECL      Signals
                 | INITIAL       String
                 | ALWAYS        String deriving (Eq, Show)
 
@@ -74,9 +74,11 @@ type Min = Int
 type Width = Int
 type Range = (Max, Min, Width)
 
-data PortDecl = PortDecl { pName :: [String], pRange :: Range } deriving (Show, Eq, Ord)
-
+-- XXX TODO : reg / memory
+data Signals = Signals { name_ :: [String], range_ :: Range } deriving (Show, Eq, Ord)
 data Direction = Input | Output | Inout deriving (Eq, Show)
+data SignalType = Reg | Mem | Wire deriving (Eq, Show)  -- and more
+
 
 {- for tiny parser test  -}
 test :: Show a => Parser a -> String -> IO ()
@@ -89,7 +91,7 @@ test p input
 parseVerilog :: FilePath -> IO ()
 parseVerilog fname
     = do { input <- readFile fname
-         ; putStr input
+--         ; putStr input
          ; case parse verilog1995 fname input of
                 Left err -> do { putStr "Error parsing at : " ; print err }
                 Right x -> print x }
@@ -123,13 +125,12 @@ moduleDeclaration = do { try(symbol "module")
     where
         moduleDeclaration_ :: Parser Module
         moduleDeclaration_
-              = do { a <- lexeme nameOfModule           -- Name
---                   ; b <- listOfPorts <|> string ""     -- Ports    XXX
-                   ; b <- listOfPorts
+              = do { n <- lexeme nameOfModule
+                   ; p <- listOfPorts
                    ; semi
-                   ; c <- lexeme(many moduleItem)       -- Items
+                   ; m <- lexeme(many moduleItem)
                    ; symbol "endmodule"
-                   ; return (Module { mName = a, mPorts = b, mItems = c })
+                   ; return (Module { mName = n, mPorts = p, mItems = m })
                    }
 
 nameOfModule :: Parser String
@@ -141,10 +142,9 @@ listOfPorts = parens listOfPorts_
           <?> "listOfPorts"
     where
         listOfPorts_ = do { whiteSpace
-                          ; a <- lexeme port
-                          ; b <- lexeme(many commaPorts)
---                          ; return $ a ++ (concat b) }
-                          ; return (a:b) }
+                          ; p <- lexeme port
+                          ; ps <- lexeme(many commaPorts)
+                          ; return (p:ps) }
                    <?> "listOfPorts_"
 
 -- XXX TODO : AST
@@ -268,7 +268,7 @@ inputDeclaration = do { symbol "input"
                       ; r <- rangeOrEmpty
                       ; l <- listOfPortIdentifiers
                       ; semi
-                      ; return $ INPUT_DECL $ PortDecl { pName = l, pRange = r } }
+                      ; return $ INPUT_DECL $ Signals { name_ = l, range_ = r } }
                <?> "inputDeclaration"
 
 listOfPortIdentifiers :: Parser [String]
@@ -289,30 +289,28 @@ rangeOrEmpty = try(lexeme range)
            <|> do { string ""; return (0, 0, 1) }
            <?> "rangeOrEmpty"
 
---range :: Parser String
 range :: Parser Range
---range = brackets range_
 range = do { symbol "["
-           ; a <- range_
+           ; a <- range'
            ; symbol "]"
            ; return a }
    <?> "range"
     where
---        range_ :: Parser String
-        range_ :: Parser Range
-        range_ = do { max <- lexeme constantExpression
+--        range' :: Parser String
+        range' :: Parser Range
+        range' = do { max <- lexeme constantExpression
                     ; colon
                     ; min <- lexeme constantExpression
 --                    ; return $ a ++ b ++ c }
                     ; return (read max, read min, (read max) - (read min) + 1 ) }   -- XXX TODO improve
-              <?> "range_"
+              <?> "range'"
 
 outputDeclaration :: Parser ModuleItem
 outputDeclaration = do { symbol "output"
                        ; r <- rangeOrEmpty
                        ; l <- listOfPortIdentifiers
                        ; semi
-                       ; return $ OUTPUT_DECL $ PortDecl { pName = l, pRange = r } }
+                       ; return $ OUTPUT_DECL $ Signals { name_ = l, range_ = r } }
                 <?> "outputDeclaration"
 
 inoutDeclaration :: Parser ModuleItem
@@ -320,25 +318,22 @@ inoutDeclaration = do { symbol "inout"
                       ; r <- rangeOrEmpty
                       ; l <- listOfPortIdentifiers
                       ; semi
-                      ; return $ INOUT_DECL $ PortDecl { pName = l, pRange = r } }
+                      ; return $ INOUT_DECL $ Signals { name_ = l, range_ = r } }
                 <?> "inoutDeclaration"
 
---netDeclaration :: Parser String
 netDeclaration :: Parser ModuleItem
-netDeclaration = do { a <- nettype
-                    ; b <- try(vecorscal) <|> string ""
---                    ; c <- try(range) <|> string ""
-                    ; rangeOrEmpty      -- XXX TODO : impl range
-                    ; d <- try(delay3) <|> string ""
-                    ; e <- listOfNetIdentifiers
-                    ; f <- semi
---                    ; return $ a ++ b ++ c ++ d ++ e ++ f }
-                    ; return $ NET_DECL $ a ++ b {-++ c-} ++ d ++ e ++ f }
+netDeclaration = do { nettype       -- XXX TODO : use SignalType
+                    ; try(vecorscal) <|> string ""
+                    ; r <- rangeOrEmpty
+                    ; try(delay3) <|> string ""     -- XXX TODO : impl
+                    ; n <- listOfNetIdentifiers
+                    ; semi
+                    ; return $ NET_DECL $ Signals { name_ = n, range_ = r } }
             <?> "netDeclaration"
     where
         vecorscal :: Parser String
-        vecorscal = brackets vecorscal_
-        vecorscal_ = do { a <- symbol "vectored"
+        vecorscal = brackets vecorscal'
+        vecorscal' = do { a <- symbol "vectored"
                         ; b <- symbol "|"
                         ; c <- symbol "scalared"
                         ; return $ a ++ b ++ c }
@@ -347,44 +342,35 @@ nettype :: Parser String
 nettype = try(symbol "wire")        -- XXX TODO : impl all types
       <?> "nettype"
 
-listOfNetIdentifiers :: Parser String
-listOfNetIdentifiers = do { a <- identifier
-                          ; b <- many commaNetIdentifier
-                          ; return $ a ++ (concat b) }
+listOfNetIdentifiers :: Parser [String]
+listOfNetIdentifiers = do { n <- identifier; ns <- many commaNetIdentifier; return (n:ns) }
     where
         commaNetIdentifier :: Parser String
-        commaNetIdentifier = do { a <- comma; b <- identifier; return $ a ++ b }
+        commaNetIdentifier = do { comma; identifier >>= return }
 
 delay3 :: Parser String
 delay3 = string ""      -- XXX TODO : impl
 
---regDeclaration :: Parser String
 regDeclaration :: Parser ModuleItem
-regDeclaration = do { a <- symbol "reg"
---                    ; b <- range <|> string ""
-                    ; rangeOrEmpty  -- XXX TODO : impl range
-                    ; c <- listOfRegisterVariables
-                    ; d <- semi
---                    ; return $ a ++ b ++ c ++ d }
-                    ; return $ REG_DECL $ a {-++ b -} ++ c ++ d }
+regDeclaration = do { symbol "reg"
+                    ; r <- rangeOrEmpty
+                    ; l <- listOfRegisterVariables
+                    ; semi
+                    ; return $ REG_DECL $ Signals { name_ = l, range_ = r } }
              <?> "regDeclaration"
 
-listOfRegisterVariables :: Parser String
-listOfRegisterVariables = do { a <- lexeme registerVariable
-                             ; b <- lexeme(many commaRegisterVariable)
-                             ; return $ a ++ (concat b) }
+listOfRegisterVariables :: Parser [String]
+listOfRegisterVariables = do { r <- lexeme registerVariable
+                             ; rs <- lexeme(many commaRegisterVariable)
+                             ; return (r:rs) }
                      <?> "listOfRegisterVariables"
     where
         commaRegisterVariable :: Parser String
-        commaRegisterVariable = do { a <- comma
-                                   ; b <- registerVariable
-                                   ; return $ a ++ b }
+        commaRegisterVariable = do { comma; registerVariable >>= return }
 
 registerVariable :: Parser String
 registerVariable = do { a <- lexeme identifier
---                      ; b <- lexeme range <|> string ""
---                      ; return $ a ++ b }
-                      ; rangeOrEmpty    -- XXX TODO : impl range
+                      ; rangeOrEmpty    -- XXX TODO : array size
                       ; return a }
               <?> "registerVariable"
 
@@ -393,8 +379,7 @@ timeDeclaration :: Parser ModuleItem
 timeDeclaration = do { a <- symbol "time"
                      ; b <- listOfRegisterVariables
                      ; c <- semi
---                     ; return $ a ++ b ++ c }
-                     ; return $ TIME_DECL $ a ++ b ++ c }
+                     ; return $ TIME_DECL $ a ++ (concat b) ++ c }
               <?> "timeDeclaration"
 
 --integerDeclaration :: Parser String
@@ -402,8 +387,7 @@ integerDeclaration :: Parser ModuleItem
 integerDeclaration = do { a <- symbol "integer"
                         ; b <- listOfRegisterVariables
                         ; c <- semi
---                        ; return $ a ++ b ++ c }
-                        ; return $ INT_DECL $ a ++ b ++ c }
+                        ; return $ INT_DECL $ a ++ (concat b) ++ c }
               <?> "integerDeclaration"
 
 -- XXX TODO

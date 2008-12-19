@@ -1,3 +1,7 @@
+2008-12-20  kei-os <keisuke.aono@gmail.com>
+
+	* regDeclaration, netDeclarationをAST化の修正した。
+
 2008-12-19  kei-os <keisuke.aono@gmail.com>
 
 	* PortDecl, Range を用意して inputDeclarationが ModuleItemを返すようにした。AST化の途中。

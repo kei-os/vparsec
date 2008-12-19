@@ -13,10 +13,12 @@ inout [1:0] e;
 reg	hoge, _dff123;
 wire		w1;
 wire [1:0]	v2;
+wire [3:0]  w2, w3, w4;
 time t1;
 time t2, t3;
 integer int1;
 integer int_a, int_b, int_hogehogec;
+reg [3:0] memory[0:1023];
 
 parameter param = 10;
 
