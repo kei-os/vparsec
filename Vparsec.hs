@@ -52,7 +52,6 @@ commaSep1   = P.commaSep1 lexer
 data Module = Module
     { mName     :: String
     , mPorts    :: [String]
---    , mItems    :: [String]     -- XXX TODO
     , mItems    :: [ModuleItem]     -- XXX test for AST
     } deriving (Eq, Show)
 
@@ -60,7 +59,8 @@ data Module = Module
 data ModuleItem = MIDECL        String
                 | PARAM_DECL    String
                 | CONT_ASSIGN   String
-                | INPUT_DECL    String
+                | INPUT_DECL    PortDecl  -- XXX on impl
+--                | INPUT_DECL    String      -- XXX on impl
                 | OUTPUT_DECL   String
                 | INOUT_DECL    String
                 | REG_DECL      String
@@ -70,25 +70,14 @@ data ModuleItem = MIDECL        String
                 | INITIAL       String
                 | ALWAYS        String deriving (Eq, Show)
 
-data Port = Port
-    { pName         :: String
-    , pDirection    :: Direction
-    , pRange        :: Range
-    } deriving (Eq, Show)
+type Max = Int
+type Min = Int
+type Width = Int
+type Range = (Max, Min, Width)
 
-data Direction = Input | Output deriving (Eq, Show)
+data PortDecl = PortDecl { pName :: [String], pRange :: Range } deriving (Show, Eq, Ord)
 
-data Range = Range
-    { rMin      :: Integer
-    , rMax      :: Integer
-    , rWidth    :: Integer
-    } deriving (Eq, Ord, Show)
-
-data DeclType = Param | Direction | Net | Reg deriving (Show)
-
-
-
-
+data Direction = Input | Output | Inout deriving (Eq, Show)
 
 {- for tiny parser test  -}
 test :: Show a => Parser a -> String -> IO ()
@@ -277,68 +266,86 @@ commaParamAssignment = do { a <- comma
 
 --inputDeclaration :: Parser String
 inputDeclaration :: Parser ModuleItem
-inputDeclaration = do { a <- symbol "input"
-                      ; b <- range <|> string ""
+inputDeclaration = do { symbol "input"
+                      ; b <- rangeOrEmpty
                       ; c <- listOfPortIdentifiers
-                      ; d <- semi
+                      ; semi
 --                      ; return $ a ++ b ++ c ++ d}
-                      ; return $ INPUT_DECL $ a ++ b ++ c ++ d}
+--                      ; return $ INPUT_DECL $ a ++ b ++ c ++ d}
+                      ; return $ INPUT_DECL $ PortDecl { pName = c, pRange = b } }
                <?> "inputDeclaration"
 
-listOfPortIdentifiers :: Parser String
+listOfPortIdentifiers :: Parser [String]
 listOfPortIdentifiers = do { a <- portIdentifier
                            ; b <- many commaPortIdentifier
-                           ; return $ a ++ (concat b) }
+--                           ; return $ a ++ (concat b) }
+                           ; return (a:b) }
                     <?> "listOfPortIdentifiers"
     where
         commaPortIdentifier :: Parser String
-        commaPortIdentifier = do { a <- comma
-                                 ; b <- lexeme identifier
-                                 ; return $ a ++ b }
+        commaPortIdentifier = do { comma ; lexeme identifier >>= return }
 
 portIdentifier :: Parser String
 portIdentifier = identifier
 
-range :: Parser String
-range = brackets range_
+rangeOrEmpty :: Parser Range
+rangeOrEmpty = try(lexeme range)
+           <|> do { string ""; return (0, 0, 1) }
+           <?> "rangeOrEmpty"
+
+--range :: Parser String
+range :: Parser Range
+--range = brackets range_
+range = do { symbol "["
+           ; a <- range_
+           ; symbol "]"
+           ; return a }
    <?> "range"
     where
-        range_ :: Parser String
-        range_ = do { a <- lexeme constantExpression
-                    ; b <- colon
-                    ; c <- lexeme constantExpression
-                    ; return $ a ++ b ++ c }
+--        range_ :: Parser String
+        range_ :: Parser Range
+        range_ = do { max <- lexeme constantExpression
+                    ; colon
+                    ; min <- lexeme constantExpression
+--                    ; return $ a ++ b ++ c }
+                    ; return (read max, read min, (read max) - (read min) + 1 ) }   -- XXX TODO improve
+              <?> "range_"
 
 --outputDeclaration :: Parser String
 outputDeclaration :: Parser ModuleItem
 outputDeclaration = do { a <- symbol "output"
-                       ; b <- range <|> string ""
-                       ; c <- listOfPortIdentifiers
+--                       ; b <- range <|> string ""
+                       ; rangeOrEmpty   -- XXX TODO : impl range
+--                       ; c <- listOfPortIdentifiers
+                       ; listOfPortIdentifiers
                        ; d <- semi
 --                       ; return $ a ++ b ++ c ++ d }
-                       ; return $ OUTPUT_DECL $ a ++ b ++ c ++ d }
+                       ; return $ OUTPUT_DECL $ a {-++ b ++ c-} ++ d }
                 <?> "outputDeclaration"
 
 --inoutDeclaration :: Parser String
 inoutDeclaration :: Parser ModuleItem
 inoutDeclaration = do { a <- symbol "inout"
-                      ; b <- range <|> string ""
-                      ; c <- listOfPortIdentifiers
+--                      ; b <- range <|> string ""
+                      ; rangeOrEmpty    -- XXX TODO : impl range
+--                      ; c <- listOfPortIdentifiers
+                      ; listOfPortIdentifiers
                       ; d <- semi
 --                      ; return $ a ++ b ++ c ++ d }
-                      ; return $ INOUT_DECL $ a ++ b ++ c ++ d }
+                      ; return $ INOUT_DECL $ a {-++ b ++ c-} ++ d }
                 <?> "inoutDeclaration"
 
 --netDeclaration :: Parser String
 netDeclaration :: Parser ModuleItem
 netDeclaration = do { a <- nettype
                     ; b <- try(vecorscal) <|> string ""
-                    ; c <- try(range) <|> string ""
+--                    ; c <- try(range) <|> string ""
+                    ; rangeOrEmpty      -- XXX TODO : impl range
                     ; d <- try(delay3) <|> string ""
                     ; e <- listOfNetIdentifiers
                     ; f <- semi
 --                    ; return $ a ++ b ++ c ++ d ++ e ++ f }
-                    ; return $ NET_DECL $ a ++ b ++ c ++ d ++ e ++ f }
+                    ; return $ NET_DECL $ a ++ b {-++ c-} ++ d ++ e ++ f }
             <?> "netDeclaration"
     where
         vecorscal :: Parser String
@@ -366,11 +373,12 @@ delay3 = string ""      -- XXX TODO : impl
 --regDeclaration :: Parser String
 regDeclaration :: Parser ModuleItem
 regDeclaration = do { a <- symbol "reg"
-                    ; b <- range <|> string ""
+--                    ; b <- range <|> string ""
+                    ; rangeOrEmpty  -- XXX TODO : impl range
                     ; c <- listOfRegisterVariables
                     ; d <- semi
 --                    ; return $ a ++ b ++ c ++ d }
-                    ; return $ REG_DECL $ a ++ b ++ c ++ d }
+                    ; return $ REG_DECL $ a {-++ b -} ++ c ++ d }
              <?> "regDeclaration"
 
 listOfRegisterVariables :: Parser String
@@ -386,8 +394,10 @@ listOfRegisterVariables = do { a <- lexeme registerVariable
 
 registerVariable :: Parser String
 registerVariable = do { a <- lexeme identifier
-                      ; b <- lexeme range <|> string ""
-                      ; return $ a ++ b }
+--                      ; b <- lexeme range <|> string ""
+--                      ; return $ a ++ b }
+                      ; rangeOrEmpty    -- XXX TODO : impl range
+                      ; return a }
               <?> "registerVariable"
 
 --timeDeclaration :: Parser String
@@ -660,8 +670,10 @@ lvalue = identifier
            ; b <- brackets expression
            ; return $ a ++ b }
     <|> do { a <- lexeme identifier
-           ; b <- range
-           ; return $ a ++ b }
+--           ; b <- range
+--           ; return $ a ++ b }
+           ; range
+           ; return a }
     <|> concatenation
     <?> "lvalue"
 
@@ -722,8 +734,10 @@ binaryOperator = try(symbol "+")
 primary :: Parser String
 primary = try(number)
       <|> try(do { a <- identifier
-                 ; b <- range
-                 ; return $ a ++ b })
+--                ; b <- range
+--                ; return $ a ++ b })
+                 ; range
+                 ; return a })
       <|> try(brackets expression)
       <|> try(lexeme identifier) 
       <|> try(concatenation)
