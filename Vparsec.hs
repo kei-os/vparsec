@@ -59,14 +59,11 @@ data Module_ = MODULE
 data ModuleItem_ = MI_DECL          String
                  | MI_PARAM_DECL    String
                  | MI_CONT_ASSIGN   String
---                 | MI_INPUT_DECL    Signals_
---                 | MI_OUTPUT_DECL   Signals_
---                 | MI_INOUT_DECL    Signals_
-                 | MI_PORT_DECL     Signals_
-                 | MI_REG_DECL      Signals_
+                 | MI_PORT_DECL     Sig_
+                 | MI_REG_DECL      Sig_
                  | MI_TIME_DECL     String
                  | MI_INT_DECL      String
-                 | MI_NET_DECL      Signals_
+                 | MI_NET_DECL      Sig_
                  | MI_INITIAL       String
                  | MI_ALWAYS        String
                    deriving (Eq, Show)
@@ -85,7 +82,7 @@ data Stmt_ = ST_BLOCKING_ASSIGN     String     -- Assign_ XXX TODO : need any in
 --           | ST_PAR_BLOCK           String
 --           | ST_TASK_ENABLE         String
 --           | ST_SYSTEM_TASK_ENABLE  String
-           | StmtNil
+           | ST_NIL
              deriving (Eq, Show)
 
 data Assign_ = ASSIGN LValue_ DelayOrEvent_ Expr_ deriving (Show)    -- XXX TODO : AST
@@ -129,13 +126,15 @@ type Width_ = Int
 type Range_ = (Max_, Min_, Width_)
 
 -- XXX TODO : reg / memory
---data Signals_ = Signals_ { name_ :: [String], range_ :: Range_ } deriving (Show, Eq, Ord)
-data Signals_ = SIGNALS
-    { direction_ :: Direction_
-    , name_ :: [String]
-    , range_ :: Range_ } deriving (Show, Eq, Ord)
+--data Sig_ = Sig_ { name_ :: [String], range_ :: Range_ } deriving (Show, Eq, Ord)
+data Sig_ = PORT_SIG { direction_ :: Direction_ , name_ :: [String] , range_ :: Range_ }
+              | NET_SIG { netType_ :: NetType_, name_ :: [String], range_ :: Range_ }
+              | REG_SIG { regType_ :: RegType_, name_ :: [String], range_ :: Range_ }
+                deriving (Eq, Show, Ord)
+
 data Direction_ = INPUT | OUTPUT | INOUT | NONE deriving (Eq, Show, Ord)
-data SignalType_ = REG | MEM | WIRE deriving (Eq, Show)  -- and more
+data NetType_ = WIRE deriving (Eq, Show, Ord)  -- and more
+data RegType_ = REG | MEM deriving (Eq, Show, Ord)
 
 
 {- for tiny parser test  -}
@@ -326,7 +325,7 @@ inputDeclaration = do { symbol "input"
                       ; r <- rangeOrEmpty
                       ; l <- listOfPortIdentifiers
                       ; semi
-                      ; return $ MI_PORT_DECL $ SIGNALS { direction_ = INPUT, name_ = l, range_ = r } }
+                      ; return $ MI_PORT_DECL $ PORT_SIG { direction_ = INPUT, name_ = l, range_ = r } }
                <?> "inputDeclaration"
 
 listOfPortIdentifiers :: Parser [String]
@@ -368,7 +367,7 @@ outputDeclaration = do { symbol "output"
                        ; r <- rangeOrEmpty
                        ; l <- listOfPortIdentifiers
                        ; semi
-                       ; return $ MI_PORT_DECL $ SIGNALS { direction_ = OUTPUT, name_ = l, range_ = r } }
+                       ; return $ MI_PORT_DECL $ PORT_SIG { direction_ = OUTPUT, name_ = l, range_ = r } }
                 <?> "outputDeclaration"
 
 inoutDeclaration :: Parser ModuleItem_
@@ -376,7 +375,7 @@ inoutDeclaration = do { symbol "inout"
                       ; r <- rangeOrEmpty
                       ; l <- listOfPortIdentifiers
                       ; semi
-                      ; return $ MI_PORT_DECL $ SIGNALS { direction_ = INOUT, name_ = l, range_ = r } }
+                      ; return $ MI_PORT_DECL $ PORT_SIG { direction_ = INOUT, name_ = l, range_ = r } }
                 <?> "inoutDeclaration"
 
 netDeclaration :: Parser ModuleItem_
@@ -386,7 +385,7 @@ netDeclaration = do { nettype       -- XXX TODO : use SignalType_
                     ; try(delay3) <|> string ""     -- XXX TODO : impl
                     ; n <- listOfNetIdentifiers
                     ; semi
-                    ; return $ MI_NET_DECL $ SIGNALS { direction_ = NONE, name_ = n, range_ = r } } -- XXX FIXME : direction_
+                    ; return $ MI_NET_DECL $ NET_SIG { netType_ = WIRE, name_ = n, range_ = r } } -- XXX FIXME : direction_
             <?> "netDeclaration"
     where
         vecorscal :: Parser String
@@ -414,7 +413,7 @@ regDeclaration = do { symbol "reg"
                     ; r <- rangeOrEmpty
                     ; l <- listOfRegisterVariables
                     ; semi
-                    ; return $ MI_REG_DECL $ SIGNALS { direction_ = NONE, name_ = l, range_ = r } }  -- XXX FIXME : direction_
+                    ; return $ MI_REG_DECL $ REG_SIG { regType_ = REG, name_ = l, range_ = r } }  -- XXX FIXME : direction_
              <?> "regDeclaration"
 
 listOfRegisterVariables :: Parser [String]
