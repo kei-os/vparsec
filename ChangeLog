@@ -1,3 +1,13 @@
+2008-12-25  kei-os <keisuke.aono@gmail.com>
+
+	* 代数的データ型を追加。まだ関数で使ってない。
+	* 関数の中で定義する関数の接尾語を _ から ' に変更。
+	* 型コンストラクタは接尾語に _をつけて、データコンストラクタはすべて大文字で作ることにした。
+
+2008-12-24  kei-os <keisuke.aono@gmail.com>
+
+	* Stmt型を追加した。
+
 2008-12-20  kei-os <keisuke.aono@gmail.com>
 
 	* regDeclaration, netDeclarationをAST化の修正した。
