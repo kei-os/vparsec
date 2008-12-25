@@ -59,9 +59,10 @@ data Module_ = MODULE
 data ModuleItem_ = MI_DECL          String
                  | MI_PARAM_DECL    String
                  | MI_CONT_ASSIGN   String
-                 | MI_INPUT_DECL    Signals_
-                 | MI_OUTPUT_DECL   Signals_
-                 | MI_INOUT_DECL    Signals_
+--                 | MI_INPUT_DECL    Signals_
+--                 | MI_OUTPUT_DECL   Signals_
+--                 | MI_INOUT_DECL    Signals_
+                 | MI_PORT_DECL     Signals_
                  | MI_REG_DECL      Signals_
                  | MI_TIME_DECL     String
                  | MI_INT_DECL      String
@@ -128,9 +129,13 @@ type Width_ = Int
 type Range_ = (Max_, Min_, Width_)
 
 -- XXX TODO : reg / memory
-data Signals_ = Signals_ { name_ :: [String], range_ :: Range_ } deriving (Show, Eq, Ord)
-data Direction_ = Input_ | Output_ | Inout_ deriving (Eq, Show)
-data SignalType_ = Reg_ | Mem_ | Wire_ deriving (Eq, Show)  -- and more
+--data Signals_ = Signals_ { name_ :: [String], range_ :: Range_ } deriving (Show, Eq, Ord)
+data Signals_ = SIGNALS
+    { direction_ :: Direction_
+    , name_ :: [String]
+    , range_ :: Range_ } deriving (Show, Eq, Ord)
+data Direction_ = INPUT | OUTPUT | INOUT | NONE deriving (Eq, Show, Ord)
+data SignalType_ = REG | MEM | WIRE deriving (Eq, Show)  -- and more
 
 
 {- for tiny parser test  -}
@@ -321,7 +326,7 @@ inputDeclaration = do { symbol "input"
                       ; r <- rangeOrEmpty
                       ; l <- listOfPortIdentifiers
                       ; semi
-                      ; return $ MI_INPUT_DECL $ Signals_ { name_ = l, range_ = r } }
+                      ; return $ MI_PORT_DECL $ SIGNALS { direction_ = INPUT, name_ = l, range_ = r } }
                <?> "inputDeclaration"
 
 listOfPortIdentifiers :: Parser [String]
@@ -363,7 +368,7 @@ outputDeclaration = do { symbol "output"
                        ; r <- rangeOrEmpty
                        ; l <- listOfPortIdentifiers
                        ; semi
-                       ; return $ MI_OUTPUT_DECL $ Signals_ { name_ = l, range_ = r } }
+                       ; return $ MI_PORT_DECL $ SIGNALS { direction_ = OUTPUT, name_ = l, range_ = r } }
                 <?> "outputDeclaration"
 
 inoutDeclaration :: Parser ModuleItem_
@@ -371,7 +376,7 @@ inoutDeclaration = do { symbol "inout"
                       ; r <- rangeOrEmpty
                       ; l <- listOfPortIdentifiers
                       ; semi
-                      ; return $ MI_INOUT_DECL $ Signals_ { name_ = l, range_ = r } }
+                      ; return $ MI_PORT_DECL $ SIGNALS { direction_ = INOUT, name_ = l, range_ = r } }
                 <?> "inoutDeclaration"
 
 netDeclaration :: Parser ModuleItem_
@@ -381,7 +386,7 @@ netDeclaration = do { nettype       -- XXX TODO : use SignalType_
                     ; try(delay3) <|> string ""     -- XXX TODO : impl
                     ; n <- listOfNetIdentifiers
                     ; semi
-                    ; return $ MI_NET_DECL $ Signals_ { name_ = n, range_ = r } }
+                    ; return $ MI_NET_DECL $ SIGNALS { direction_ = NONE, name_ = n, range_ = r } } -- XXX FIXME : direction_
             <?> "netDeclaration"
     where
         vecorscal :: Parser String
@@ -409,7 +414,7 @@ regDeclaration = do { symbol "reg"
                     ; r <- rangeOrEmpty
                     ; l <- listOfRegisterVariables
                     ; semi
-                    ; return $ MI_REG_DECL $ Signals_ { name_ = l, range_ = r } }
+                    ; return $ MI_REG_DECL $ SIGNALS { direction_ = NONE, name_ = l, range_ = r } }  -- XXX FIXME : direction_
              <?> "regDeclaration"
 
 listOfRegisterVariables :: Parser [String]
