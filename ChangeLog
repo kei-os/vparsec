@@ -1,6 +1,7 @@
 2008-12-26  kei-os <keisuke.aono@gmail.com>
 
 	* NetType_, RegType_ データ型を追加。
+	* statementが Stmt_を返すように変更した。Stmt_を扱う準備。
 
 2008-12-25  kei-os <keisuke.aono@gmail.com>
 

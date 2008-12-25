@@ -64,8 +64,8 @@ data ModuleItem_ = MI_DECL          String
                  | MI_TIME_DECL     String
                  | MI_INT_DECL      String
                  | MI_NET_DECL      Sig_
-                 | MI_INITIAL       String
-                 | MI_ALWAYS        String
+                 | MI_INITIAL       Stmt_
+                 | MI_ALWAYS        Stmt_
                    deriving (Eq, Show)
 
 data Stmt_ = ST_BLOCKING_ASSIGN     String     -- Assign_ XXX TODO : need any instance
@@ -496,26 +496,26 @@ netAssignment = do { a <- lexeme lvalue
 
 --initialStatement :: Parser String
 initialStatement :: Parser ModuleItem_
-initialStatement = do { a <- symbol "initial"
-                      ; b <- lexeme statement
---                      ; return $ a ++ b }
-                      ; return $ MI_INITIAL $ a ++ b }
+initialStatement = do { symbol "initial"
+                      ; a <- lexeme statement
+                      ; return $ MI_INITIAL $ a }
              <?> "initialStatement"
 
 --alwaysStatement :: Parser String
 alwaysStatement :: Parser ModuleItem_
-alwaysStatement = do { a <- symbol "always"
-                     ; b <- lexeme statement
---                     ; return $ a ++ b }
-                     ; return $ MI_ALWAYS $ a ++ b }
+alwaysStatement = do { symbol "always"
+                     ; a <- lexeme statement
+                     ; return $ MI_ALWAYS $ a }
               <?> "alwaysStatement"
 
-statementOrNull :: Parser String
-statementOrNull = try(lexeme statement) <|> semi
+statementOrNull :: Parser Stmt_
+statementOrNull = try (lexeme statement)
+              <|> do {semi; return ST_NIL}
               <?> "statementOrNull"
 
 -- XXX this BNF is from IEEE spec.
-statement :: Parser String
+--statement :: Parser String
+statement :: Parser Stmt_
 statement = try(do { a <- lexeme blockingAssignment; semi; return a })
         <|> try(do { a <- lexeme nonBlockingAssignment; semi; return a })
         <|> try(do { a <- lexeme proceduralContinuousAssignments; semi; return a })
@@ -543,64 +543,78 @@ commaAssignment = do { a <- comma
                      ; b <- assignment
                      ; return $ a ++ b } <?> "commaAssignment"
 
-blockingAssignment :: Parser String
+--blockingAssignment :: Parser String
+blockingAssignment :: Parser Stmt_
 blockingAssignment = try(do { a <- lexeme lvalue
                             ; b <- symbol "="
                             ; c <- expression
-                            ; return $ a ++ b ++ c })
+--                            ; return $ a ++ b ++ c })
+                            ; return $ ST_BLOCKING_ASSIGN $ "ST_BLOCKING_ASSIGN:1 " })    -- XXX FIXME : temp
                 <|> try(do { a <- lexeme lvalue
                        ; b <- symbol "="
                        ; c <- lexeme delayOrEventControl
                        ; d <- lexeme expression
                        ; e <- semi
-                       ; return $ a ++ b ++ c ++ d ++ e })
+--                       ; return $ a ++ b ++ c ++ d ++ e })
+                       ; return $ ST_BLOCKING_ASSIGN $ "ST_BLOCKING_ASSIGN:2 " })   -- FIXME : temp
                 <?> "blockingAssignment"
 
-nonBlockingAssignment :: Parser String
+--nonBlockingAssignment :: Parser String
+nonBlockingAssignment :: Parser Stmt_
 nonBlockingAssignment = try(do { a <- lexeme lvalue
                             ; b <- symbol "<="
                             ; c <- expression
-                            ; return $ a ++ b ++ c })
+--                            ; return $ a ++ b ++ c })
+                            ; return $ ST_NON_BLOCKING_ASSIGN $ "ST_NON_BLOCKING_ASSIGN:1 " })  -- FIXME : temp
                 <|> try(do { a <- lexeme lvalue
                        ; b <- symbol "<="
                        ; c <- lexeme delayOrEventControl
                        ; d <- lexeme expression
                        ; e <- semi
-                       ; return $ a ++ b ++ c ++ d ++ e })
+--                       ; return $ a ++ b ++ c ++ d ++ e })
+                       ; return $ ST_NON_BLOCKING_ASSIGN $ "ST_NON_BLOCKING_ASSIGN:2 " })   -- FIXME : temp
                 <?> "nonBlockingAssignment"
 
-proceduralContinuousAssignments :: Parser String
+--proceduralContinuousAssignments :: Parser String
+proceduralContinuousAssignments :: Parser Stmt_
 proceduralContinuousAssignments = try(do { a <- symbol "assign"
                                          ; b <- lexeme regAssignment
                                          ; c <- semi
-                                         ; return $ a ++ b ++ c}) 
+--                                         ; return $ a ++ b ++ c}) 
+                                         ; return $ ST_CONTINUOUS_ASSIGN $ "ST_CONTINUOUS_ASSIGN:1 "}) -- FIXME : temp
                               <|> try(do { a <- symbol "deassign"
                                          ; b <- lexeme reglValue
                                          ; c <- semi
-                                         ; return $ a ++ b ++ c })
+--                                         ; return $ a ++ b ++ c })
+                                         ; return $ ST_CONTINUOUS_ASSIGN $ "ST_CONTINUOUS_ASSIGN:2 " }) -- FIXME : temp
 --                              <|> force regAssignment;    -- not impl
 --                              <|> force netAssignment;    -- not impl
 --                              <|> release reglValue;      -- not impl
 --                              <|> release netlValue;      -- not impl
                               <?> "proceduralContinuousAssignments"
 
-proceduralTimingControlStatement :: Parser String
+--proceduralTimingControlStatement :: Parser String
+proceduralTimingControlStatement :: Parser Stmt_
 proceduralTimingControlStatement = do { a <- delayOrEventControl
                                       ; b <- statementOrNull
-                                      ; return $ a ++ b }
+--                                      ; return $ a ++ b }
+                                      ; return $ ST_TIMING_CONTROL_STMT $ "ST_TIMING_CONTROL_STMT " }   -- FIXME : temp
                                <?> "proceduralTimingControlStatement"
 
-conditionalStatement :: Parser String
+--conditionalStatement :: Parser String
+conditionalStatement :: Parser Stmt_
 conditionalStatement = do { a <- symbol "if"
                           ; b <- parens expression
                           ; c <- statementOrNull
                           ; d <- try(elseStatementOrNull) <|> string ""
-                          ; return $ a ++ b ++ c ++ d }
+--                          ; return $ a ++ b ++ c ++ d }
+                          ; return $ ST_CONDITIONAL_STMT $ "ST_CONDITIONAL_STMT " } -- FIXME : temp
                    <?> "conditionalStatement"
     where
         elseStatementOrNull = do { a <- symbol "else"
                                  ; b <- statementOrNull
-                                 ; return $ a ++ b }
+--                                 ; return $ a ++ b }
+                                 ; return $ a }
 
 regAssignment :: Parser String
 regAssignment = do { a <- lexeme reglValue
@@ -609,20 +623,25 @@ regAssignment = do { a <- lexeme reglValue
                    ; return $ a ++ b ++ c }
             <?> "regAssignment"
 
-seqBlock :: Parser String
+--seqBlock :: Parser String
+seqBlock :: Parser Stmt_
 seqBlock = do { a <- symbol "begin"
               ; b <- seqBlock'
               ; c <- symbol "end"
-              ; return $ a ++ b ++ c }
+--              ; return $ a ++ b ++ c }
+              ; return $ ST_SEQ_BLOCK $ "ST_SEQ_BLOCK " }
        <?> "seqBlock"
     where
-        seqBlock' = do {a <- many statement; return (concat a)}
+--        seqBlock' = do {a <- many statement; return (concat a)}
+--        seqBlock' = do {a <- many statement; return (concat a)}
+        seqBlock' = do {a <- many statement; return "seqBlock' :1 ok "}
                 <|> do { a <- colon
                        ; b <- identifier
                        ; c <- many blockDeclaration
                        ; d <- many statement
 --                       ; return $ a ++ b ++ (concat c) ++ (concat d) }
-                       ; return $ a ++ b ++ {-(concat c) ++ -} (concat d) }  -- XXX test for AST
+--                       ; return $ a ++ b ++ {-(concat c) ++ -} (concat d) }  -- XXX test for AST
+                       ; return "seqBlock':2 ok " }  -- XXX FIXME : temp for Stmt_
                 <?> "seqBlock'"
 
 delayOrEventControl :: Parser String
