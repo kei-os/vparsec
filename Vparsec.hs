@@ -68,8 +68,8 @@ data ModuleItem_ = MI_DECL          String
                  | MI_ALWAYS        Stmt_
                    deriving (Eq, Show)
 
-data Stmt_ = ST_BLOCKING_ASSIGN     String     -- Assign_ XXX TODO : need any instance
-           | ST_NON_BLOCKING_ASSIGN String     -- TODO : need any instance
+data Stmt_ = ST_BLOCKING_ASSIGN     String     -- use BlockAssign_
+           | ST_NON_BLOCKING_ASSIGN String     -- use BlockAssign_
            | ST_CONTINUOUS_ASSIGN   String     -- [NetAssign_]
            | ST_TIMING_CONTROL_STMT String     -- TimingControl_
            | ST_CONDITIONAL_STMT    String
@@ -95,8 +95,9 @@ data SeqBlock_ = SEQ_BLOCK Stmt_ NameOfBlock_ OutputDecl_ deriving (Show)   -- t
 type NameOfBlock_ = String
 type OutputDecl_ = String       -- XXX temp
 
-data DelayOrEvent_ = DELAY_CONTROL  DelayControl_
-                   | EVENT_CONTROL  EventControl_
+data DelayOrEvent_ = DE_DELAY_CONTROL  DelayControl_
+                   | DE_EVENT_CONTROL  EventControl_
+                   | DE_NIL
                      deriving (Show)
 
 data DelayControl_ = DELAY_VALUE Integer deriving (Show)
@@ -118,6 +119,11 @@ data LValue_ = LV_IDENT String
              | LV_CONCAT [Expr_]
                deriving (Show)
 
+data BlockAssign_ = BLOCK_ASSIGN
+    { baValue_ :: LValue_
+    , baCtrl_ :: DelayOrEvent_
+    , baExpr_ :: Expr_ } deriving (Show)
+
 ------------------------------------------------------------
 
 type Max_ = Int
@@ -130,6 +136,7 @@ type Range_ = (Max_, Min_, Width_)
 data Sig_ = PORT_SIG { direction_ :: Direction_ , name_ :: [String] , range_ :: Range_ }
               | NET_SIG { netType_ :: NetType_, name_ :: [String], range_ :: Range_ }
               | REG_SIG { regType_ :: RegType_, name_ :: [String], range_ :: Range_ }
+
                 deriving (Eq, Show, Ord)
 
 data Direction_ = INPUT | OUTPUT | INOUT | NONE deriving (Eq, Show, Ord)
@@ -543,36 +550,38 @@ commaAssignment = do { a <- comma
                      ; b <- assignment
                      ; return $ a ++ b } <?> "commaAssignment"
 
---blockingAssignment :: Parser String
 blockingAssignment :: Parser Stmt_
-blockingAssignment = try(do { a <- lexeme lvalue
-                            ; b <- symbol "="
-                            ; c <- expression
+blockingAssignment = try(do { lv <- lexeme lvalue
+                            ; symbol "="
+                            ; expr <- expression
 --                            ; return $ a ++ b ++ c })
                             ; return $ ST_BLOCKING_ASSIGN $ "ST_BLOCKING_ASSIGN:1 " })    -- XXX FIXME : temp
-                <|> try(do { a <- lexeme lvalue
-                       ; b <- symbol "="
-                       ; c <- lexeme delayOrEventControl
-                       ; d <- lexeme expression
-                       ; e <- semi
---                       ; return $ a ++ b ++ c ++ d ++ e })
-                       ; return $ ST_BLOCKING_ASSIGN $ "ST_BLOCKING_ASSIGN:2 " })   -- FIXME : temp
+--                            ; return $ ST_BLOCKING_ASSIGN { baValue_ = lv, baCtrl_ = DE_NUL, baExpr_ = expr }    -- XXX TODO : enable
+                <|> try(do { lv <- lexeme lvalue
+                           ; symbol "="
+                           ; de <- lexeme delayOrEventControl
+                           ; expr <- lexeme expression
+                           ; semi
+--                         ; return $ a ++ b ++ c ++ d ++ e })
+                           ; return $ ST_BLOCKING_ASSIGN $ "ST_BLOCKING_ASSIGN:2 " })   -- FIXME : temp
+--                           ; return $ ST_BLOCKING_ASSIGN { baValue_ = lv, baCtrl_ = de, baExpr_ = expr }  -- XXX TODO : enable
                 <?> "blockingAssignment"
 
---nonBlockingAssignment :: Parser String
 nonBlockingAssignment :: Parser Stmt_
-nonBlockingAssignment = try(do { a <- lexeme lvalue
-                            ; b <- symbol "<="
-                            ; c <- expression
---                            ; return $ a ++ b ++ c })
-                            ; return $ ST_NON_BLOCKING_ASSIGN $ "ST_NON_BLOCKING_ASSIGN:1 " })  -- FIXME : temp
-                <|> try(do { a <- lexeme lvalue
-                       ; b <- symbol "<="
-                       ; c <- lexeme delayOrEventControl
-                       ; d <- lexeme expression
-                       ; e <- semi
---                       ; return $ a ++ b ++ c ++ d ++ e })
-                       ; return $ ST_NON_BLOCKING_ASSIGN $ "ST_NON_BLOCKING_ASSIGN:2 " })   -- FIXME : temp
+nonBlockingAssignment = try(do { lv <- lexeme lvalue
+                               ; symbol "<="
+                               ; expr <- expression
+--                               ; return $ a ++ b ++ c })
+                               ; return $ ST_NON_BLOCKING_ASSIGN $ "ST_NON_BLOCKING_ASSIGN:1 " })  -- FIXME : temp
+--                               ; return $ ST_NON_BLOCKING_ASSIGN { baValue_ = lv, baCtrl_ = DE_NIL, baExpr_ = expr }    -- XXX TODO : enable
+                <|> try(do { lv <- lexeme lvalue
+                           ; symbol "<="
+                           ; de <- lexeme delayOrEventControl
+                           ; expr <- lexeme expression
+                           ; semi
+--                           ; return $ a ++ b ++ c ++ d ++ e })
+                           ; return $ ST_NON_BLOCKING_ASSIGN $ "ST_NON_BLOCKING_ASSIGN:2 " })   -- FIXME : temp
+--                           ; return $ ST_NON_BLOCKING_ASSIGN { baValue_ = lv, baCtrl_ = de, baExpr_ = expr }    -- XXX TODO : enable
                 <?> "nonBlockingAssignment"
 
 --proceduralContinuousAssignments :: Parser String

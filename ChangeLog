@@ -2,6 +2,7 @@
 
 	* NetType_, RegType_ データ型を追加。
 	* statementが Stmt_を返すように変更した。Stmt_を扱う準備。
+	* BlockAssign_型を追加。blockingAssignment, nonBlockingAssignmentを AST準備した。
 
 2008-12-25  kei-os <keisuke.aono@gmail.com>
 
