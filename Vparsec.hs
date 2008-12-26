@@ -68,10 +68,10 @@ data ModuleItem_ = MI_DECL          String
                  | MI_ALWAYS        Stmt_
                    deriving (Eq, Show)
 
-data Stmt_ = ST_BLOCKING_ASSIGN     String     -- use BlockAssign_
-           | ST_NON_BLOCKING_ASSIGN String     -- use BlockAssign_
+data Stmt_ = ST_BLOCKING_ASSIGN     BlockAssign_
+           | ST_NON_BLOCKING_ASSIGN BlockAssign_
            | ST_CONTINUOUS_ASSIGN   String     -- XXX
-           | ST_TIMING_CONTROL_STMT String     -- TimingControl_
+           | ST_TIMING_CONTROL_STMT TimingControl_
            | ST_CONDITIONAL_STMT    String
 --           | ST_CASE_STMT           String
 --           | ST_LOOP_STMT           String
@@ -102,11 +102,19 @@ type OutputDecl_ = String       -- XXX temp
 
 data DelayOrEvent_ = DE_DELAY_CONTROL  DelayControl_
                    | DE_EVENT_CONTROL  EventControl_
+                   | DE_EXPR_EV Expr_ EventControl_
                    | DE_NIL
                      deriving (Eq, Show)
 
-data DelayControl_ = DELAY_VALUE Integer deriving (Eq, Show)
-data EventControl_ = EVENT_IDENT String deriving (Eq, Show)
+data DelayControl_ = DL_NUM Integer | DL_IDENT String deriving (Eq, Show)
+data EventControl_ = EV_IDENT String | EV_EXPR EventExpr_ deriving (Eq, Show)
+
+data EventExpr_ = EV_EXPR_ Expr_
+                | EV_SCALAR Edge_ String    --  XXX TODO : change String to ScEvExpr_
+                | EV_LIST [EventExpr_]
+                  deriving (Eq, Show)
+
+data Edge_ = POSEDGE | NEGEDGE | VALUE_CHANGE deriving (Eq, Show)
 
 data Primary_ = PR_NUMBER String
               | PR_IDENT String
@@ -136,10 +144,7 @@ data LValue_ = LV_IDENT String
              | LV_CONCAT [Expr_]
                deriving (Eq, Show)
 
-data BlockAssign_ = BLOCK_ASSIGN
-    { baValue_ :: LValue_
-    , baCtrl_ :: DelayOrEvent_
-    , baExpr_ :: Expr_ } deriving (Eq, Show)
+data BlockAssign_ = BLOCK_ASSIGN LValue_ DelayOrEvent_ Expr_ deriving (Eq, Show)
 
 ------------------------------------------------------------
 
@@ -539,38 +544,33 @@ commaAssignment = do { a <- comma; b <- assignment; return $ a ++ b }
               <?> "commaAssignment"
 
 blockingAssignment :: Parser Stmt_
-blockingAssignment = try(do { lv <- lexeme lvalue
-                            ; symbol "="
-                            ; expr <- expression
-                            ; return $ ST_BLOCKING_ASSIGN $ "ST_BLOCKING_ASSIGN:1 " })    -- XXX TODO : enable (wait for impl next try block) 
---                            ; return $ ST_BLOCKING_ASSIGN { baValue_ = lv, baCtrl_ = DE_NUL, baExpr_ = expr } }    -- XXX TODO : enable
-                <|> try(do { lv <- lexeme lvalue
-                           ; symbol "="
-                           ; de <- lexeme delayOrEventControl   -- XXX TODO : impl delayOrEventControl
-                           ; expr <- lexeme expression
-                           ; semi
-                           ; return $ ST_BLOCKING_ASSIGN "ST_BLOCKING_ASSIGN:2 " })   -- FIXME : temp
-                <?> "blockingAssignment"
---                           ; return $ ST_BLOCKING_ASSIGN { baValue_ = lv, baCtrl_ = de, baExpr_ = expr }  -- XXX TODO : enable
+blockingAssignment
+        = try(do { lv <- lexeme lvalue
+                 ; symbol "="
+                 ; expr <- expression
+                 ; return $ ST_BLOCKING_ASSIGN $ BLOCK_ASSIGN lv DE_NIL expr })
+      <|> try(do { lv <- lexeme lvalue
+                 ; symbol "="
+                 ; de <- lexeme delayOrEventControl
+                 ; expr <- lexeme expression
+                 ; semi
+                 ; return $ ST_BLOCKING_ASSIGN $ BLOCK_ASSIGN lv de expr })
+      <?> "blockingAssignment"
 
 nonBlockingAssignment :: Parser Stmt_
-nonBlockingAssignment = try(do { lv <- lexeme lvalue
-                               ; symbol "<="
-                               ; expr <- expression
---                               ; return $ a ++ b ++ c })
-                               ; return $ ST_NON_BLOCKING_ASSIGN "ST_NON_BLOCKING_ASSIGN:1 " })  -- FIXME : temp
---                               ; return $ ST_NON_BLOCKING_ASSIGN { baValue_ = lv, baCtrl_ = DE_NIL, baExpr_ = expr }    -- XXX TODO : enable
-                <|> try(do { lv <- lexeme lvalue
-                           ; symbol "<="
-                           ; de <- lexeme delayOrEventControl   -- XXX TODO : impl
-                           ; expr <- lexeme expression
-                           ; semi
---                           ; return $ a ++ b ++ c ++ d ++ e })
-                           ; return $ ST_NON_BLOCKING_ASSIGN "ST_NON_BLOCKING_ASSIGN:2 " })   -- FIXME : temp
---                           ; return $ ST_NON_BLOCKING_ASSIGN { baValue_ = lv, baCtrl_ = de, baExpr_ = expr }    -- XXX TODO : enable
-                <?> "nonBlockingAssignment"
+nonBlockingAssignment
+        = try(do { lv <- lexeme lvalue
+                 ; symbol "<="
+                 ; expr <- expression
+                 ; return $ ST_NON_BLOCKING_ASSIGN $ BLOCK_ASSIGN lv DE_NIL expr })
+      <|> try(do { lv <- lexeme lvalue
+                 ; symbol "<="
+                 ; de <- lexeme delayOrEventControl
+                 ; expr <- lexeme expression
+                 ; semi
+                 ; return $ ST_NON_BLOCKING_ASSIGN $ BLOCK_ASSIGN lv de expr })
+      <?> "nonBlockingAssignment"
 
---proceduralContinuousAssignments :: Parser String
 proceduralContinuousAssignments :: Parser Stmt_
 proceduralContinuousAssignments = try(do { a <- symbol "assign"
                                          ; b <- lexeme regAssignment
@@ -588,13 +588,12 @@ proceduralContinuousAssignments = try(do { a <- symbol "assign"
 --                              <|> release netlValue;      -- not impl
                               <?> "proceduralContinuousAssignments"
 
---proceduralTimingControlStatement :: Parser String
 proceduralTimingControlStatement :: Parser Stmt_
-proceduralTimingControlStatement = do { a <- delayOrEventControl
-                                      ; b <- statementOrNull
---                                      ; return $ a ++ b }
-                                      ; return $ ST_TIMING_CONTROL_STMT $ "ST_TIMING_CONTROL_STMT " }   -- FIXME : temp
-                               <?> "proceduralTimingControlStatement"
+proceduralTimingControlStatement
+            = do { de <- delayOrEventControl
+                 ; st <- statementOrNull
+                 ; return $ ST_TIMING_CONTROL_STMT $ TIMING_CONTROL de st }
+          <?> "proceduralTimingControlStatement"
 
 --conditionalStatement :: Parser String
 conditionalStatement :: Parser Stmt_
@@ -639,25 +638,19 @@ seqBlock = do { a <- symbol "begin"
                        ; return "seqBlock':2 ok " }  -- XXX FIXME : temp for Stmt_
                 <?> "seqBlock'"
 
-delayOrEventControl :: Parser String
-delayOrEventControl = try(delayControl)
-                  <|> try(do { a <- eventControl; return a })
-                  <|> do { a <- symbol "repeat"
-                         ; b <- parens expression
-                         ; c <- eventControl
-                         ; return $ a ++ {-b-} "expression:ok " ++ c }
+delayOrEventControl :: Parser DelayOrEvent_
+delayOrEventControl = try (do { dl <- delayControl; return $ DE_DELAY_CONTROL dl })
+                  <|> try (do { ev <- eventControl; return $ DE_EVENT_CONTROL ev })
+                  <|> do { symbol "repeat"
+                         ; expr <- parens expression
+                         ; ev <- eventControl
+                         ; return $ DE_EXPR_EV expr ev }
                   <?> "delayOrEventControl"
 
-delayControl :: Parser String
-delayControl = try(do{ a <- symbol "#"
-                     ; b <- number
-                     ; return $ a ++ b })
-           <|> try(do { a <- symbol "#"
-                      ; b <- lexeme identifier
-                      ; return $ a ++ b })
-           <|> do { a <- symbol "#"
-                  ; b <- parens mintypmaxExpression
-                  ; return $ a ++ b }
+delayControl :: Parser DelayControl_
+delayControl = try(do { symbol "#"; n <- number; return $ DL_NUM $ read n })
+           <|> try(do { symbol "#"; b <- lexeme identifier; return $ DL_IDENT b })
+--           <|> do { symbol "#"; e <- parens mintypmaxExpression; return e }   -- XXX not support yet
            <?> "delayControl"
 
 mintypmaxExpression :: Parser String
@@ -666,44 +659,36 @@ mintypmaxExpression = try(do { a <- lexeme expression
                          ; c <- lexeme expression
                          ; d <- colon
                          ; e <- lexeme expression
---                         ; return $ a ++ b ++ c ++ d ++ e })
                          ; return "expr1 : expr2 : expr3 " })
                   <|> do { a <- lexeme expression; return "expr4 " }
                   <?> "mintypmaxExpression"
 
-eventControl :: Parser String
-eventControl = try(do { a <- symbol "@"
-                  ; b <- lexeme identifier
-                  ; return $ a ++ b })
-           <|> do { a <- symbol "@"
-                  ; b <- parens eventExpression
-                  ; return $ a ++ b }
+--eventControl :: Parser String
+eventControl :: Parser EventControl_
+eventControl = try(do { symbol "@"; id <- lexeme identifier; return $ EV_IDENT id })
+           <|> do { symbol "@"; ev <- parens eventExpression; return $ EV_EXPR ev }
            <?> "eventControl"
 
 -- XXX use IEEE's BNF (need to omit left recursion)
-eventExpression :: Parser String
-eventExpression = do { a <- optEventExpression
-                     ; b <- eventExpression'
-                     ; return $ a ++ b }
+-- XXX FIXME : returning dummy value
+eventExpression :: Parser EventExpr_
+eventExpression = do { optEventExpression; eventExpression'; return $ EV_SCALAR POSEDGE "hoge" }
               <?> "eventExpression"
 
 optEventExpression :: Parser String
-optEventExpression = try(do { a <- symbol "posedge"
-                            ; b <- lexeme expression
-                            ; return $ a ++ {-b-} "expr:ok " })
-                 <|> try(do { a <- symbol "negedge"
-                            ; b <- lexeme expression
-                            ; return $ a ++ {-b-} "expr:ok " })
+optEventExpression = try(do { symbol "posedge"; lexeme expression; return "expr:ok " })
+                 <|> try(do { symbol "negedge"; b <- lexeme expression; return "expr:ok " })
                  <|> try(lexeme identifier)
-                 <|> do { a <- try(lexeme expression); return "expr:ok " }
+                 <|> do { try(lexeme expression); return "expr:ok " }
                  <?> "optEventExpression"
 
-eventExpression' :: Parser String
-eventExpression' = do { a <- symbol "or"
-                      ; b <- lexeme eventExpression
-                      ; c <- eventExpression' 
-                      ; return $ a ++ b ++ c }
-               <|> string ""
+-- XXX TODO : semantic value
+eventExpression' :: Parser [EventExpr_]
+eventExpression' = do { symbol "or"
+                      ; e <- lexeme eventExpression
+                      ; es <- eventExpression' 
+                      ; return (e:es) }
+               <|> do {a <- string ""; return [] }
                <?> "eventExpression'"
 
 -- Expressions
