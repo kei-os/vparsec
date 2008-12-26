@@ -6,6 +6,7 @@
 	* continuousAssignを AST化。(lvalue, concatenation, expression, commaExpression, primary)
 	  けどExceptionエラーでまだうまく動かない。とりあえずコミット。
 	* ソースコードのゴミそうじ。
+	* constantExpressionを一時的に使わないように修正。
 
 2008-12-25  kei-os <keisuke.aono@gmail.com>
 

@@ -358,13 +358,15 @@ rangeOrEmpty = try(lexeme range)
            <?> "rangeOrEmpty"
 
 range :: Parser Range_
-range = brackets range'
+range = do { symbol "["; r <- range'; symbol "]"; return r }
    <?> "range"
     where
         range' :: Parser Range_
-        range' = do { max <- lexeme constantExpression
+--        range' = do { max <- lexeme constantExpression
+        range' = do { max <- number     -- XXX FIXME : need valid constantExpression
                     ; colon
-                    ; min <- lexeme constantExpression
+--                    ; min <- lexeme constantExpression
+                    ; min <- number     -- XXX FIXME : need valid constantExpression
                     ; return (read max, read min, (read max) - (read min) + 1 ) }   -- XXX TODO improve
               <?> "range'"
 
