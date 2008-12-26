@@ -8,6 +8,7 @@
 	* ソースコードのゴミそうじ。
 	* constantExpressionを一時的に使わないように修正。
 	* delayOrEventControl, delayControl, eventControlを、ひととおり AST化した。
+	* nettype, NetType_ を実装。
 
 2008-12-25  kei-os <keisuke.aono@gmail.com>
 

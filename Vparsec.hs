@@ -56,13 +56,12 @@ data Module_ = MODULE
     } deriving (Eq, Show)
 
 -- XXX test for AST
-data ModuleItem_ = MI_DECL          String
-                 | MI_PARAM_DECL    String
+data ModuleItem_ = MI_PARAM_DECL    String              -- XXX TODO impl
                  | MI_CONT_ASSIGN   [NetAssign_]
                  | MI_PORT_DECL     Sig_
                  | MI_REG_DECL      Sig_
-                 | MI_TIME_DECL     String
-                 | MI_INT_DECL      String
+                 | MI_TIME_DECL     String              -- XXX TODO impl
+                 | MI_INT_DECL      String              -- XXX TODO impl
                  | MI_NET_DECL      Sig_
                  | MI_INITIAL       Stmt_
                  | MI_ALWAYS        Stmt_
@@ -70,15 +69,15 @@ data ModuleItem_ = MI_DECL          String
 
 data Stmt_ = ST_BLOCKING_ASSIGN     BlockAssign_
            | ST_NON_BLOCKING_ASSIGN BlockAssign_
-           | ST_CONTINUOUS_ASSIGN   String     -- XXX
+           | ST_CONTINUOUS_ASSIGN   String              -- XXX TODO impl
            | ST_TIMING_CONTROL_STMT TimingControl_
-           | ST_CONDITIONAL_STMT    String
+           | ST_CONDITIONAL_STMT    String              -- XXX TODO impl
 --           | ST_CASE_STMT           String
 --           | ST_LOOP_STMT           String
 --           | ST_WAIT_STMT           String
 --           | ST_DISABLE_STMT        String
 --           | ST_EVENT_TRIGGER       String
-           | ST_SEQ_BLOCK           String
+           | ST_SEQ_BLOCK           String              -- XXX TODO impl
 --           | ST_PAR_BLOCK           String
 --           | ST_TASK_ENABLE         String
 --           | ST_SYSTEM_TASK_ENABLE  String
@@ -161,9 +160,11 @@ data Sig_ = PORT_SIG { direction_ :: Direction_ , name_ :: [String] , range_ :: 
                 deriving (Eq, Show, Ord)
 
 data Direction_ = INPUT | OUTPUT | INOUT | NONE deriving (Eq, Show, Ord)
-data NetType_ = WIRE deriving (Eq, Show, Ord)  -- and more
-data RegType_ = REG | MEM deriving (Eq, Show, Ord)
+data NetType_ = NET_WIRE | NET_TRI | NET_TRI1 | NET_SUPPLY0 | NET_WAND
+              | NET_TRIAND | NET_TRI0 | NET_SUPPLY1 | NET_WOR | NET_TRIOR
+                deriving (Eq, Show, Ord)
 
+data RegType_ = REG | MEM deriving (Eq, Show, Ord)
 
 {- for tiny parser test  -}
 test :: Show a => Parser a -> String -> IO ()
@@ -211,7 +212,7 @@ moduleDeclaration = do { try(symbol "module"); a <- moduleDeclaration'; return a
                    ; semi
                    ; m <- lexeme(many moduleItem)
                    ; symbol "endmodule"
-                   ; return (MODULE { mName = n, mPorts = p, mItems = m }) }
+                   ; return $ MODULE { mName = n, mPorts = p, mItems = m } }
 
 nameOfModule :: Parser String
 nameOfModule = identifier <?> "nameOfModule"
@@ -221,19 +222,13 @@ listOfPorts = parens listOfPorts'
           <|> do { string ""; return [] }
           <?> "listOfPorts"
     where
-        listOfPorts' = do { whiteSpace
-                          ; p <- lexeme port
-                          ; ps <- lexeme(many commaPorts)
-                          ; return (p:ps) }
+        listOfPorts' = do { whiteSpace; p <- lexeme port; ps <- lexeme(many commaPorts); return (p:ps) }
                    <?> "listOfPorts'"
 
 -- XXX TODO : AST
 port :: Parser String
 port = try(portExpression)
-    <|> do { a <- dot
-           ; b <- lexeme nameOfPort
-           ; c <- parens port'
-           ; return $ a ++ b ++ c }
+    <|> do { a <- dot; b <- lexeme nameOfPort; c <- parens port'; return $ a ++ b ++ c }
     <|> string ""
     <?> "port"
         where
@@ -392,13 +387,13 @@ inoutDeclaration = do { symbol "inout"
                 <?> "inoutDeclaration"
 
 netDeclaration :: Parser ModuleItem_
-netDeclaration = do { nettype       -- XXX TODO : use SignalType_
-                    ; try(vecorscal) <|> string ""
+netDeclaration = do { net <- nettype
+--                    ; try(vecorscal) <|> string ""    -- XXX not support yet
                     ; r <- rangeOrEmpty
-                    ; try(delay3) <|> string ""     -- XXX TODO : impl
+--                    ; try(delay3) <|> string ""       -- XXX not support yet
                     ; n <- listOfNetIdentifiers
                     ; semi
-                    ; return $ MI_NET_DECL $ NET_SIG { netType_ = WIRE, name_ = n, range_ = r } } -- XXX FIXME : direction_
+                    ; return $ MI_NET_DECL $ NET_SIG { netType_ = net, name_ = n, range_ = r } }
             <?> "netDeclaration"
     where
         vecorscal :: Parser String
@@ -408,8 +403,17 @@ netDeclaration = do { nettype       -- XXX TODO : use SignalType_
                         ; c <- symbol "scalared"
                         ; return $ a ++ b ++ c }
 
-nettype :: Parser String
-nettype = try(symbol "wire")        -- XXX TODO : impl all types
+nettype :: Parser NetType_
+nettype = try( do { symbol "wire"; return NET_WIRE })
+      <|> try( do { symbol "tri"; return NET_TRI })
+      <|> try( do { symbol "tri1"; return NET_TRI1 })
+      <|> try( do { symbol "supply0"; return NET_SUPPLY0 })
+      <|> try( do { symbol "wand"; return NET_WAND })
+      <|> try( do { symbol "triand"; return NET_TRIAND })
+      <|> try( do { symbol "tri0"; return NET_TRI0 })
+      <|> try( do { symbol "supply1"; return NET_SUPPLY1 })
+      <|> try( do { symbol "wor"; return NET_WOR })
+      <|> try( do { symbol "trior"; return NET_TRIOR })
       <?> "nettype"
 
 listOfNetIdentifiers :: Parser [String]
