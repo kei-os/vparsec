@@ -151,6 +151,15 @@ data LValue_ = LV_IDENT String
 
 data BlockAssign_ = BLOCK_ASSIGN LValue_ DelayOrEvent_ Expr_ deriving (Eq, Show)
 
+data Block_ = BL_PARAM          -- XXX TODO impl
+            | BL_REG Sig_
+            | BL_INT            -- XXX TODO impl
+            | BL_REAL           -- XXX TODO impl
+            | BL_TIME           -- XXX TODO impl
+            | BL_REALTIME       -- XXX TODO impl
+            | BL_EVENT          -- XXX TODO impl
+              deriving (Eq, Show)
+
 ------------------------------------------------------------
 
 type Max_ = Int
@@ -303,7 +312,6 @@ moduleItem = try(lexeme parameterDeclaration)
          <|> try(lexeme inputDeclaration)
          <|> try(lexeme outputDeclaration)
          <|> try(lexeme inoutDeclaration)
---         <|> try(lexeme regDeclaration)
          <|> try(do { a <- lexeme regDeclaration; return $ MI_REG_DECL a })
          <|> try(lexeme timeDeclaration)
          <|> try(lexeme integerDeclaration)
@@ -476,14 +484,13 @@ realDeclaration = string ""
 eventDeclaration :: Parser String
 eventDeclaration = string ""
 
--- XXX TODO impl (check try and lexeme)
-blockDeclaration :: Parser ModuleItem_
-blockDeclaration = try(lexeme parameterDeclaration)
---               <|> try(lexeme regDeclaration)
-               <|> try(do { a <- lexeme regDeclaration; return $ MI_REG_DECL a })
-               <|> try(lexeme integerDeclaration)
+--blockDeclaration :: Parser ModuleItem_
+blockDeclaration :: Parser Block_
+blockDeclaration = try(do { a <- lexeme parameterDeclaration; return $ BL_PARAM })    -- XXX FIXME : type
+               <|> try(do { a <- lexeme regDeclaration; return $ BL_REG a })
+               <|> try(do { a <- lexeme integerDeclaration; return $ BL_INT })  -- XXX FIXME : type
 --               <|> try(lexeme realDeclaration)
-               <|> try(lexeme timeDeclaration)
+               <|> try(do { a <- lexeme timeDeclaration; return $ BL_TIME })    -- XXX FIXME : type
 --               <|> try(lexeme eventDeclaration)
                <?> "blockDeclaration"
 
