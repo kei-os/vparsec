@@ -76,7 +76,7 @@ data Stmt_ = ST_BLOCKING_ASSIGN     BlockAssign_
 --           | ST_WAIT_STMT           String
 --           | ST_DISABLE_STMT        String
 --           | ST_EVENT_TRIGGER       String
-           | ST_SEQ_BLOCK           String              -- XXX TODO impl
+             | ST_SEQ_BLOCK           Block_
 --           | ST_PAR_BLOCK           String
 --           | ST_TASK_ENABLE         String
 --           | ST_SYSTEM_TASK_ENABLE  String
@@ -99,9 +99,9 @@ data Condition_ = CONDITION CondExpr_ IfStmt_ ElseStmt_ deriving (Eq, Show)
 type IfStmt_ = Stmt_
 type ElseStmt_ = Stmt_
 
-data SeqBlock_ = SEQ_BLOCK Stmt_ NameOfBlock_ OutputDecl_ deriving (Eq, Show)   -- temp
-type NameOfBlock_ = String
-type OutputDecl_ = String       -- XXX temp
+--data SeqBlock_ = SEQ_BLOCK Stmt_ NameOfBlock_ OutputDecl_ deriving (Eq, Show)   -- temp
+--type NameOfBlock_ = String
+--type OutputDecl_ = String       -- XXX temp
 
 data DelayOrEvent_ = DE_DELAY_CONTROL  DelayControl_
                    | DE_EVENT_CONTROL  EventControl_
@@ -151,14 +151,16 @@ data LValue_ = LV_IDENT String
 
 data BlockAssign_ = BLOCK_ASSIGN LValue_ DelayOrEvent_ Expr_ deriving (Eq, Show)
 
-data Block_ = BL_PARAM          -- XXX TODO impl
-            | BL_REG Sig_
-            | BL_INT            -- XXX TODO impl
-            | BL_REAL           -- XXX TODO impl
-            | BL_TIME           -- XXX TODO impl
-            | BL_REALTIME       -- XXX TODO impl
-            | BL_EVENT          -- XXX TODO impl
-              deriving (Eq, Show)
+data BlockItem_ = BI_PARAM          -- XXX TODO impl
+                | BI_REG Sig_
+                | BI_INT            -- XXX TODO impl
+                | BI_REAL           -- XXX TODO impl
+                | BI_TIME           -- XXX TODO impl
+                | BI_REALTIME       -- XXX TODO impl
+                | BI_EVENT          -- XXX TODO impl
+                  deriving (Eq, Show)
+
+data Block_ = BLOCK String [BlockItem_] [Stmt_] deriving (Eq, Show)
 
 ------------------------------------------------------------
 
@@ -484,13 +486,12 @@ realDeclaration = string ""
 eventDeclaration :: Parser String
 eventDeclaration = string ""
 
---blockDeclaration :: Parser ModuleItem_
-blockDeclaration :: Parser Block_
-blockDeclaration = try(do { a <- lexeme parameterDeclaration; return $ BL_PARAM })    -- XXX FIXME : type
-               <|> try(do { a <- lexeme regDeclaration; return $ BL_REG a })
-               <|> try(do { a <- lexeme integerDeclaration; return $ BL_INT })  -- XXX FIXME : type
+blockDeclaration :: Parser BlockItem_
+blockDeclaration = try(do { a <- lexeme parameterDeclaration; return $ BI_PARAM })    -- XXX FIXME : type
+               <|> try(do { a <- lexeme regDeclaration; return $ BI_REG a })
+               <|> try(do { a <- lexeme integerDeclaration; return $ BI_INT })  -- XXX FIXME : type
 --               <|> try(lexeme realDeclaration)
-               <|> try(do { a <- lexeme timeDeclaration; return $ BL_TIME })    -- XXX FIXME : type
+               <|> try(do { a <- lexeme timeDeclaration; return $ BI_TIME })    -- XXX FIXME : type
 --               <|> try(lexeme eventDeclaration)
                <?> "blockDeclaration"
 
@@ -545,7 +546,7 @@ statement = try(do { a <- lexeme blockingAssignment; semi; return a })
 --        <|> do { a <- try(lexeme waitStatement; return a) }
 --        <|> do { a <- try(lexeme disableStatement; return a) }
 --        <|> do { a <- try(lexeme eventTrigger; return a) }
-        <|> try(do { a <- lexeme seqBlock; return a })        -- XXX TODO impl
+        <|> try(do { a <- lexeme seqBlock; return a })
 --        <|> do { a <- try(lexeme parBlock; return a) }
 --        <|> do { a <- try(lexeme taskEnable; return a) }
 --        <|> do { a <- try(lexeme systemTaskEnable; return a) }
@@ -631,25 +632,17 @@ regAssignment = do { lv <- lexeme reglValue
                    ; return $ REG_ASSIGN lv expr }
             <?> "regAssignment"
 
---seqBlock :: Parser String
 seqBlock :: Parser Stmt_
-seqBlock = do { a <- symbol "begin"
-              ; b <- seqBlock'
-              ; c <- symbol "end"
---              ; return $ a ++ b ++ c }
-              ; return $ ST_SEQ_BLOCK $ "ST_SEQ_BLOCK " }
+seqBlock = do { symbol "begin"; seq <- seqBlock'; symbol "end"; return $ ST_SEQ_BLOCK seq }
        <?> "seqBlock"
     where
---        seqBlock' = do {a <- many statement; return (concat a)}
---        seqBlock' = do {a <- many statement; return (concat a)}
-        seqBlock' = do {a <- many statement; return "seqBlock' :1 ok "}
-                <|> do { a <- colon
-                       ; b <- identifier
-                       ; c <- many blockDeclaration
-                       ; d <- many statement
---                       ; return $ a ++ b ++ (concat c) ++ (concat d) }
---                       ; return $ a ++ b ++ {-(concat c) ++ -} (concat d) }  -- XXX test for AST
-                       ; return "seqBlock':2 ok " }  -- XXX FIXME : temp for Stmt_
+        seqBlock' :: Parser Block_
+        seqBlock' = do { stmt <- many statement; return $ BLOCK "" [] stmt }
+                <|> do { colon
+                       ; name <- identifier
+                       ; item <- many blockDeclaration
+                       ; stmt <- many statement
+                       ; return $ BLOCK name item stmt }
                 <?> "seqBlock'"
 
 delayOrEventControl :: Parser DelayOrEvent_
@@ -668,14 +661,11 @@ delayControl = try(do { symbol "#"; n <- number; return $ DL_NUM $ read n })
            <?> "delayControl"
 
 mintypmaxExpression :: Parser String
-mintypmaxExpression = try(do { a <- lexeme expression
-                         ; b <- colon
-                         ; c <- lexeme expression
-                         ; d <- colon
-                         ; e <- lexeme expression
-                         ; return "expr1 : expr2 : expr3 " })
-                  <|> do { a <- lexeme expression; return "expr4 " }
-                  <?> "mintypmaxExpression"
+mintypmaxExpression
+        = try(do { a <- lexeme expression
+                 ; colon; lexeme expression; colon; lexeme expression; return "expr1 : expr2 : expr3 " })
+     <|> do { a <- lexeme expression; return "expr4 " }
+     <?> "mintypmaxExpression"
 
 --eventControl :: Parser String
 eventControl :: Parser EventControl_
