@@ -47,15 +47,14 @@ semiSep1    = P.semiSep1 lexer
 commaSep    = P.commaSep lexer
 commaSep1   = P.commaSep1 lexer
 
+-------------------------------------------------------------
 
--- XXX for Module
 data Module_ = MODULE
     { mName     :: String
     , mPorts    :: [String]
     , mItems    :: [ModuleItem_]
     } deriving (Eq, Show)
 
--- XXX test for AST
 data ModuleItem_ = MI_PARAM_DECL    String              -- XXX TODO impl
                  | MI_CONT_ASSIGN   [NetAssign_]
                  | MI_PORT_DECL     Sig_
@@ -71,7 +70,7 @@ data Stmt_ = ST_BLOCKING_ASSIGN     BlockAssign_
            | ST_NON_BLOCKING_ASSIGN BlockAssign_
            | ST_PROCEDURAL_ASSIGN   RegAssign_
            | ST_TIMING_CONTROL_STMT TimingControl_
-           | ST_CONDITIONAL_STMT    String              -- XXX TODO impl
+           | ST_CONDITIONAL_STMT    Condition_
 --           | ST_CASE_STMT           String
 --           | ST_LOOP_STMT           String
 --           | ST_WAIT_STMT           String
@@ -95,6 +94,10 @@ data NetAssign_ = NET_ASSIGN LValue_ Expr_ deriving (Eq, Show)
 data ProcAssign_ = PROC_ASSIGN LValue_ Expr_ deriving (Eq, Show)
 
 data TimingControl_ = TIMING_CONTROL DelayOrEvent_ Stmt_ deriving (Eq, Show)
+
+data Condition_ = CONDITION CondExpr_ IfStmt_ ElseStmt_ deriving (Eq, Show)
+type IfStmt_ = Stmt_
+type ElseStmt_ = Stmt_
 
 data SeqBlock_ = SEQ_BLOCK Stmt_ NameOfBlock_ OutputDecl_ deriving (Eq, Show)   -- temp
 type NameOfBlock_ = String
@@ -127,14 +130,14 @@ data Primary_ = PR_NUMBER String
 
 type UnaryOp_   = String
 type BinaryOp_  = String
-type ExprCond_  = Expr_
-type ExprIf_    = Expr_
-type ExprElse_  = Expr_
+type CondExpr_  = Expr_
+type IfExpr_    = Expr_
+type ElseExpr_  = Expr_
 
 data Expr_ = EX_PRIMARY Primary_
            | EX_U_PRIMARY UnaryOp_ Primary_
            | EX_EXPR_NODE Expr_ BinaryOp_ Expr_
-           | EX_EXPR_IFELSE ExprCond_ ExprIf_ ExprElse_
+           | EX_EXPR_IFELSE CondExpr_ IfExpr_ ElseExpr_
            | EX_STRING String
              deriving (Eq, Show)
 
@@ -601,20 +604,17 @@ proceduralTimingControlStatement
                  ; return $ ST_TIMING_CONTROL_STMT $ TIMING_CONTROL de st }
           <?> "proceduralTimingControlStatement"
 
---conditionalStatement :: Parser String
 conditionalStatement :: Parser Stmt_
-conditionalStatement = do { a <- symbol "if"
-                          ; b <- parens expression
-                          ; c <- statementOrNull
-                          ; d <- try(elseStatementOrNull) <|> string ""
---                          ; return $ a ++ b ++ c ++ d }
-                          ; return $ ST_CONDITIONAL_STMT $ "ST_CONDITIONAL_STMT " } -- FIXME : temp
+conditionalStatement = do { symbol "if"
+                          ; cond <- parens expression
+                          ; ifstmt <- statementOrNull
+                          ; elsestmt <- elseStatementOrNull
+                          ; return $ ST_CONDITIONAL_STMT $ CONDITION cond ifstmt elsestmt }
                    <?> "conditionalStatement"
     where
-        elseStatementOrNull = do { a <- symbol "else"
-                                 ; b <- statementOrNull
---                                 ; return $ a ++ b }
-                                 ; return $ a }
+        elseStatementOrNull :: Parser Stmt_
+        elseStatementOrNull = try(do { symbol "else"; stmt <- statementOrNull; return stmt })
+                          <|> do { string ""; return ST_NIL }
 
 regAssignment :: Parser RegAssign_
 regAssignment = do { lv <- lexeme reglValue
