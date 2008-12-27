@@ -5,6 +5,8 @@
 	* regDeclarationの return typeを ModuleItem_から Sig_に変更。
 	* blockDeclarationの return typeを ModuleItem_ から Block_ に変更。
 	* Block_と BlockItem_ をわけた。seqBlockを AST化。
+	* alwaysStatement, initialStatementの return typeを ModuleItem_ から Stmt_ に変更。
+	* (input|output|inout)Declarationの return typeを ModuleItem_ から Sig_ に変更。
 
 2008-12-26  kei-os <keisuke.aono@gmail.com>
 

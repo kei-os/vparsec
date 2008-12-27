@@ -147,8 +147,6 @@ data LValue_ = LV_IDENT String
              | LV_CONCAT [Expr_]
                deriving (Eq, Show)
 
---type RegLValue_ = LValue_     -- XXX pending
-
 data BlockAssign_ = BLOCK_ASSIGN LValue_ DelayOrEvent_ Expr_ deriving (Eq, Show)
 
 data BlockItem_ = BI_PARAM          -- XXX TODO impl
@@ -175,7 +173,7 @@ data Sig_ = PORT_SIG { direction_ :: Direction_ , name_ :: [String] , range_ :: 
           | REG_SIG { regType_ :: RegType_, name_ :: [String], range_ :: Range_ }
             deriving (Eq, Show, Ord)
 
-data Direction_ = INPUT | OUTPUT | INOUT | NONE deriving (Eq, Show, Ord)
+data Direction_ = IN | OUT | INOUT | NONE deriving (Eq, Show, Ord)
 data NetType_ = NET_WIRE | NET_TRI | NET_TRI1 | NET_SUPPLY0 | NET_WAND
               | NET_TRIAND | NET_TRI0 | NET_SUPPLY1 | NET_WOR | NET_TRIOR
                 deriving (Eq, Show, Ord)
@@ -311,15 +309,15 @@ constantExpression = do { expression; return "expression:ok " }
 moduleItem :: Parser ModuleItem_
 moduleItem = try(lexeme parameterDeclaration)
          <|> try(lexeme continuousAssign)
-         <|> try(lexeme inputDeclaration)
-         <|> try(lexeme outputDeclaration)
-         <|> try(lexeme inoutDeclaration)
+         <|> try(do { a <- lexeme inputDeclaration; return $ MI_PORT_DECL a })
+         <|> try(do { a <- lexeme outputDeclaration; return $ MI_PORT_DECL a })
+         <|> try(do { a <- lexeme inoutDeclaration; return $ MI_PORT_DECL a })
          <|> try(do { a <- lexeme regDeclaration; return $ MI_REG_DECL a })
          <|> try(lexeme timeDeclaration)
          <|> try(lexeme integerDeclaration)
          <|> try(lexeme netDeclaration)
-         <|> try(lexeme initialStatement)
-         <|> try(lexeme alwaysStatement)
+         <|> try(do { a <- lexeme initialStatement; return $ MI_INITIAL a })
+         <|> try(do { a <- lexeme alwaysStatement; return $ MI_ALWAYS a })
          <?> "moduleItem"
 
 parameterDeclaration :: Parser ModuleItem_
@@ -348,12 +346,12 @@ commaParamAssignment = do { a <- comma
                           ; return $ a ++ b }
                   <?> "commaParamAssignment"
 
-inputDeclaration :: Parser ModuleItem_
+inputDeclaration :: Parser Sig_
 inputDeclaration = do { symbol "input"
                       ; r <- rangeOrEmpty
                       ; l <- listOfPortIdentifiers
                       ; semi
-                      ; return $ MI_PORT_DECL $ PORT_SIG { direction_ = INPUT, name_ = l, range_ = r } }
+                      ; return $ PORT_SIG { direction_ = IN, name_ = l, range_ = r } }
                <?> "inputDeclaration"
 
 listOfPortIdentifiers :: Parser [String]
@@ -386,20 +384,20 @@ range = do { symbol "["; r <- range'; symbol "]"; return r }
                     ; return (read max, read min, (read max) - (read min) + 1 ) }   -- XXX TODO improve
               <?> "range'"
 
-outputDeclaration :: Parser ModuleItem_
+outputDeclaration :: Parser Sig_
 outputDeclaration = do { symbol "output"
                        ; r <- rangeOrEmpty
                        ; l <- listOfPortIdentifiers
                        ; semi
-                       ; return $ MI_PORT_DECL $ PORT_SIG { direction_ = OUTPUT, name_ = l, range_ = r } }
+                       ; return $ PORT_SIG { direction_ = OUT, name_ = l, range_ = r } }
                 <?> "outputDeclaration"
 
-inoutDeclaration :: Parser ModuleItem_
+inoutDeclaration :: Parser Sig_
 inoutDeclaration = do { symbol "inout"
                       ; r <- rangeOrEmpty
                       ; l <- listOfPortIdentifiers
                       ; semi
-                      ; return $ MI_PORT_DECL $ PORT_SIG { direction_ = INOUT, name_ = l, range_ = r } }
+                      ; return $ PORT_SIG { direction_ = INOUT, name_ = l, range_ = r } }
                 <?> "inoutDeclaration"
 
 netDeclaration :: Parser ModuleItem_
@@ -520,12 +518,12 @@ netAssignment = do { lv <- lexeme lvalue
                    ; return $ NET_ASSIGN lv expr }
             <?> "netAssignment"
 
-initialStatement :: Parser ModuleItem_
-initialStatement = do { symbol "initial"; a <- lexeme statement; return $ MI_INITIAL a }
+initialStatement :: Parser Stmt_
+initialStatement = do { symbol "initial"; a <- lexeme statement; return a }
              <?> "initialStatement"
 
-alwaysStatement :: Parser ModuleItem_
-alwaysStatement = do { symbol "always"; a <- lexeme statement; return $ MI_ALWAYS $ a }
+alwaysStatement :: Parser Stmt_
+alwaysStatement = do { symbol "always"; a <- lexeme statement; return a }
               <?> "alwaysStatement"
 
 statementOrNull :: Parser Stmt_
@@ -688,12 +686,10 @@ optEventExpression = try(do { symbol "posedge"; lexeme expression; return "expr:
 
 -- XXX TODO : semantic value
 eventExpression' :: Parser [EventExpr_]
-eventExpression' = do { symbol "or"
-                      ; e <- lexeme eventExpression
-                      ; es <- eventExpression' 
-                      ; return (e:es) }
-               <|> do {a <- string ""; return [] }
-               <?> "eventExpression'"
+eventExpression'
+        = do { symbol "or"; e <- lexeme eventExpression; es <- eventExpression'; return (e:es) }
+      <|> do {a <- string ""; return [] }
+      <?> "eventExpression'"
 
 -- Expressions
 lvalue :: Parser LValue_
@@ -711,6 +707,7 @@ reglValue :: Parser LValue_     -- XXX pending : RegLValue_
 reglValue = lvalue
         <?> "reglValue"
 
+-- XXX TODO : test
 expression :: Parser Expr_
 expression = do { a <- optExpression
                 ; b <- expression' <|> expression''
