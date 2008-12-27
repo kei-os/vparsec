@@ -69,7 +69,7 @@ data ModuleItem_ = MI_PARAM_DECL    String              -- XXX TODO impl
 
 data Stmt_ = ST_BLOCKING_ASSIGN     BlockAssign_
            | ST_NON_BLOCKING_ASSIGN BlockAssign_
-           | ST_CONTINUOUS_ASSIGN   String              -- XXX TODO impl
+           | ST_PROCEDURAL_ASSIGN   RegAssign_
            | ST_TIMING_CONTROL_STMT TimingControl_
            | ST_CONDITIONAL_STMT    String              -- XXX TODO impl
 --           | ST_CASE_STMT           String
@@ -90,8 +90,9 @@ data NBAssign_ = ASSIGN LValue_ DelayOrEvent_ Expr_ deriving (Eq, Show)     -- b
 type BAssign_ = NBAssign_       -- nonBlockingAssignment
 
 data NetAssign_ = NET_ASSIGN LValue_ Expr_ deriving (Eq, Show)
-data CAssign_ = C_NET_ASSIGN [NetAssign_] deriving (Eq, Show)
 
+-- XXX first, support only "assign"
+data ProcAssign_ = PROC_ASSIGN LValue_ Expr_ deriving (Eq, Show)
 
 data TimingControl_ = TIMING_CONTROL DelayOrEvent_ Stmt_ deriving (Eq, Show)
 
@@ -142,6 +143,8 @@ data LValue_ = LV_IDENT String
              | LV_IDENT_RANGE String Range_      -- identifier [ constant_expr : constant_expr ]
              | LV_CONCAT [Expr_]
                deriving (Eq, Show)
+
+--type RegLValue_ = LValue_     -- XXX pending
 
 data BlockAssign_ = BLOCK_ASSIGN LValue_ DelayOrEvent_ Expr_ deriving (Eq, Show)
 
@@ -576,21 +579,20 @@ nonBlockingAssignment
       <?> "nonBlockingAssignment"
 
 proceduralContinuousAssignments :: Parser Stmt_
-proceduralContinuousAssignments = try(do { a <- symbol "assign"
-                                         ; b <- lexeme regAssignment
-                                         ; c <- semi
---                                         ; return $ a ++ b ++ c}) 
-                                         ; return $ ST_CONTINUOUS_ASSIGN $ "ST_CONTINUOUS_ASSIGN:1 "}) -- FIXME : temp
-                              <|> try(do { a <- symbol "deassign"
-                                         ; b <- lexeme reglValue
-                                         ; c <- semi
---                                         ; return $ a ++ b ++ c })
-                                         ; return $ ST_CONTINUOUS_ASSIGN $ "ST_CONTINUOUS_ASSIGN:2 " }) -- FIXME : temp
---                              <|> force regAssignment;    -- not impl
---                              <|> force netAssignment;    -- not impl
---                              <|> release reglValue;      -- not impl
---                              <|> release netlValue;      -- not impl
-                              <?> "proceduralContinuousAssignments"
+proceduralContinuousAssignments
+        = try(do { symbol "assign"
+                 ; r <- lexeme regAssignment    -- reg_lvalue = expression
+                 ; semi
+                 ; return $ ST_PROCEDURAL_ASSIGN r }) -- FIXME : temp
+--      <|> try(do { symbol "deassign"      -- not support yet
+--                 ; r <- lexeme reglValue
+--                 ; semi
+--                 ; return $ ST_CONTINUOUS_ASSIGN $ "ST_CONTINUOUS_ASSIGN:2 " })
+--    <|> force regAssignment;    -- not impl
+--    <|> force netAssignment;    -- not impl
+--    <|> release reglValue;      -- not impl
+--    <|> release netlValue;      -- not impl
+      <?> "proceduralContinuousAssignments"
 
 proceduralTimingControlStatement :: Parser Stmt_
 proceduralTimingControlStatement
@@ -614,11 +616,11 @@ conditionalStatement = do { a <- symbol "if"
 --                                 ; return $ a ++ b }
                                  ; return $ a }
 
-regAssignment :: Parser String
-regAssignment = do { a <- lexeme reglValue
-                   ; b <- symbol "="
-                   ; c <- lexeme expression
-                   ; return $ a ++ b {-++ c-} ++ "expression:ok "  }
+regAssignment :: Parser RegAssign_
+regAssignment = do { lv <- lexeme reglValue
+                   ; symbol "="
+                   ; expr <- lexeme expression
+                   ; return $ REG_ASSIGN lv expr }
             <?> "regAssignment"
 
 --seqBlock :: Parser String
@@ -707,9 +709,8 @@ lvalue = do { id <- identifier; return $ LV_IDENT id }
     <|> do { c <- concatenation; return $ LV_CONCAT c }
     <?> "lvalue"
 
-reglValue :: Parser String
---reglValue = lvalue    -- XXX TODO : enable
-reglValue = do { a <- lvalue; return "reglValue:ok " }
+reglValue :: Parser LValue_     -- XXX pending : RegLValue_
+reglValue = lvalue
         <?> "reglValue"
 
 expression :: Parser Expr_

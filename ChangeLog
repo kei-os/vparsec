@@ -1,3 +1,7 @@
+2008-12-27  kei-os <keisuke.aono@gmail.com>
+
+	* proceduralContinuousAssignment, reglValueを AST化。
+
 2008-12-26  kei-os <keisuke.aono@gmail.com>
 
 	* NetType_, RegType_ データ型を追加。
