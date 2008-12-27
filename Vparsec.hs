@@ -160,10 +160,9 @@ type Range_ = (Max_, Min_, Width_)
 
 -- XXX TODO : reg / memory
 data Sig_ = PORT_SIG { direction_ :: Direction_ , name_ :: [String] , range_ :: Range_ }
-              | NET_SIG { netType_ :: NetType_, name_ :: [String], range_ :: Range_ }
-              | REG_SIG { regType_ :: RegType_, name_ :: [String], range_ :: Range_ }
-
-                deriving (Eq, Show, Ord)
+          | NET_SIG { netType_ :: NetType_, name_ :: [String], range_ :: Range_ }
+          | REG_SIG { regType_ :: RegType_, name_ :: [String], range_ :: Range_ }
+            deriving (Eq, Show, Ord)
 
 data Direction_ = INPUT | OUTPUT | INOUT | NONE deriving (Eq, Show, Ord)
 data NetType_ = NET_WIRE | NET_TRI | NET_TRI1 | NET_SUPPLY0 | NET_WAND
@@ -304,7 +303,8 @@ moduleItem = try(lexeme parameterDeclaration)
          <|> try(lexeme inputDeclaration)
          <|> try(lexeme outputDeclaration)
          <|> try(lexeme inoutDeclaration)
-         <|> try(lexeme regDeclaration)
+--         <|> try(lexeme regDeclaration)
+         <|> try(do { a <- lexeme regDeclaration; return $ MI_REG_DECL a })
          <|> try(lexeme timeDeclaration)
          <|> try(lexeme integerDeclaration)
          <|> try(lexeme netDeclaration)
@@ -431,12 +431,12 @@ listOfNetIdentifiers = do { n <- identifier; ns <- many commaNetIdentifier; retu
 delay3 :: Parser String
 delay3 = string ""      -- XXX TODO : impl
 
-regDeclaration :: Parser ModuleItem_
+regDeclaration :: Parser Sig_
 regDeclaration = do { symbol "reg"
                     ; r <- rangeOrEmpty
                     ; l <- listOfRegisterVariables
                     ; semi
-                    ; return $ MI_REG_DECL $ REG_SIG { regType_ = REG, name_ = l, range_ = r } }  -- XXX FIXME : direction_
+                    ; return $ REG_SIG { regType_ = REG, name_ = l, range_ = r } }
              <?> "regDeclaration"
 
 listOfRegisterVariables :: Parser [String]
@@ -479,7 +479,8 @@ eventDeclaration = string ""
 -- XXX TODO impl (check try and lexeme)
 blockDeclaration :: Parser ModuleItem_
 blockDeclaration = try(lexeme parameterDeclaration)
-               <|> try(lexeme regDeclaration)
+--               <|> try(lexeme regDeclaration)
+               <|> try(do { a <- lexeme regDeclaration; return $ MI_REG_DECL a })
                <|> try(lexeme integerDeclaration)
 --               <|> try(lexeme realDeclaration)
                <|> try(lexeme timeDeclaration)

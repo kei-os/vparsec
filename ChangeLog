@@ -2,6 +2,7 @@
 
 	* proceduralContinuousAssignment, reglValueを AST化。
 	* conditionalStatementを AST化。
+	* regDeclarationの return typeを ModuleItem_から Sig_に変更。
 
 2008-12-26  kei-os <keisuke.aono@gmail.com>
 
