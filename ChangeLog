@@ -3,6 +3,7 @@
 	* portのいくつかの構文を not supportにした。
 	* eventExpressionを AST。
 	* multipleConcatenationを実装。
+	* mintypmaxExpressionを実装。
 
 2008-12-30  kei-os <keisuke.aono@gmail.com>
 

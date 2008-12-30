@@ -122,7 +122,7 @@ data Primary_ = PR_NUMBER String
               | PR_IDENT_EXPR String Expr_
               | PR_IDENT_RANGE String Range_
               | PR_CONCAT [Expr_]
-              | PR_MINMAX_EXPR String   -- XXX TODO : impl
+              | PR_MINMAX_EXPR Expr_ Expr_ Expr_    -- min ( ,typ ,max)    -- XXX TODO : check order
                 deriving (Eq, Show)
 
 type UnaryOp_   = String
@@ -160,6 +160,8 @@ data Block_ = BLOCK String [BlockItem_] [Stmt_] deriving (Eq, Show)
 
 ------------------------------------------------------------
 
+-- should i use Integer (not Int)??
+type Typ_ = Int
 type Max_ = Int
 type Min_ = Int
 type Width_ = Int
@@ -634,11 +636,15 @@ delayControl = try(do { symbol "#"; n <- number; return $ DL_NUM $ read n })
 --           <|> do { symbol "#"; e <- parens mintypmaxExpression; return e }   -- XXX not support yet
            <?> "delayControl"
 
-mintypmaxExpression :: Parser String
+mintypmaxExpression :: Parser Primary_
 mintypmaxExpression
-        = try(do { a <- lexeme expression
-                 ; colon; lexeme expression; colon; lexeme expression; return "expr1 : expr2 : expr3 " })
-     <|> do { a <- lexeme expression; return "expr4 " }
+        = try(do { min <- lexeme expression
+                 ; colon
+                 ; typ <- lexeme expression
+                 ; colon
+                 ; max <- lexeme expression
+                 ; return $ PR_MINMAX_EXPR min typ max })
+     <|> do { min <- lexeme expression; return $ PR_MINMAX_EXPR min EX_NIL EX_NIL }
      <?> "mintypmaxExpression"
 
 eventControl :: Parser [Event_]
@@ -760,7 +766,7 @@ primary = do { n <- try(number); return $ PR_NUMBER n }
       <|> try(do { c <- concatenation; return $ PR_CONCAT c})
       <|> try(do { mc <- multipleConcatenation; return $ PR_CONCAT mc})
 --      <|> try(functionCall)               -- XXX TODO impl
---      <|> try(parens mintypmaxExpression) -- XXX TODO impl
+      <|> try(parens mintypmaxExpression)
       <?> "primary"
 
 number :: Parser String
