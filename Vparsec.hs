@@ -136,9 +136,10 @@ type ElseExpr_  = Expr_
 
 data Expr_ = EX_PRIMARY Primary_
            | EX_U_PRIMARY UnaryOp_ Primary_
-           | EX_EXPR_NODE Expr_ BinaryOp_ Expr_
-           | EX_EXPR_IFELSE CondExpr_ IfExpr_ ElseExpr_
+           | EX_EXPR_NODE Expr_ BinaryOp_ Expr_             -- left op right
+           | EX_EXPR_COND CondExpr_ IfExpr_ ElseExpr_     -- cond ifexpr elseexpr
            | EX_STRING String
+           | EX_NIL
              deriving (Eq, Show)
 
 data LValue_ = LV_IDENT String
@@ -707,34 +708,51 @@ reglValue :: Parser LValue_     -- XXX pending : RegLValue_
 reglValue = lvalue
         <?> "reglValue"
 
--- XXX TODO : test
-expression :: Parser Expr_
-expression = do { a <- optExpression
-                ; b <- expression' <|> expression''
-                ; return a }    -- XXX FIXME : !!
-        <?> "expression"
+
+expression:: Parser Expr_
+expression = do { b <- exprbeta
+                ; e <- expression'
+                ; return $ makeexpr b e }
+   <?> "expression"
     where
-        optExpression = do { p <- try(primary); return $ EX_PRIMARY p }
-                    <|> try(do { op <- lexeme unaryOperator
-                               ; p <- lexeme primary
-                               ; return $ EX_U_PRIMARY op p })
-                    <|> do { str <- string'; return $ EX_STRING str }
-        expression' = try(do { op <- lexeme binaryOperator
-                             ; left <- lexeme expression       -- XXX left, rightをどう変形したか確認すること
-                             ; right <- lexeme expression'
-                             ; return $ EX_EXPR_NODE left op right })
-                  <|> do { s <- string ""; return $ EX_STRING "" }
-        expression''
-            = try(do { lexeme questionMark
-                     ; cond <- lexeme expression        -- XXX TODO : check cond, ifstmt, elsestmt order
-                     ; colon
-                     ; ifstmt <- lexeme expression      -- XXX TODO
-                     ; elsestmt <- lexeme expression''  -- XXX TODO
-                     ; return $ EX_EXPR_IFELSE cond ifstmt elsestmt })
-          <|> do { s <-string ""; return $ EX_STRING "" }
+        makeexpr :: Expr_ -> Expr_ -> Expr_
+        makeexpr b EX_NIL = b
+        makeexpr b (EX_EXPR_NODE _ op r) = (EX_EXPR_NODE b op r)
+        makeexpr b (EX_EXPR_COND _ ifexpr elseexpr) = (EX_EXPR_COND b ifexpr elseexpr)
+
+-- XXX need lexeme??
+exprbeta :: Parser Expr_
+exprbeta = try(do { p <- primary; return $ EX_PRIMARY p })
+       <|> try(do { u <- unaryOperator; p <- primary; return $ EX_U_PRIMARY u p })
+       <|> do { s <- string'; return $ EX_STRING s }
+       <?> "exprbeta"
+
+expression' :: Parser Expr_
+expression' = try(do { op <- lexeme binaryOperator
+                     ; ex <- lexeme expression
+                     ; ex' <- lexeme expression'
+                     ; return $ makeexpr' op ex ex' })
+    <|> try(do { lexeme questionMark
+               ; ifexpr <- lexeme expression
+               ; colon
+               ; elseexpr <- lexeme expression
+               ; ex' <- lexeme expression'
+               ; return $ makecond ifexpr elseexpr ex' })
+   <|> do { string ""; return EX_NIL }
+   <?> "expression'"
+    where       -- XXX i think there must be better way of writing...
+        makeexpr' :: BinaryOp_ -> Expr_ -> Expr_ -> Expr_
+        makeexpr' op l r = (EX_EXPR_NODE r op l)
+
+        makecond :: Expr_ -> Expr_ -> Expr_ -> Expr_
+        makecond ifexpr elseexpr EX_NIL = (EX_EXPR_COND EX_NIL ifexpr elseexpr)
+        makecond ifexpr elseexpr (EX_EXPR_NODE _ op r)
+                    = (EX_EXPR_COND EX_NIL ifexpr (EX_EXPR_NODE elseexpr op r))
+        makecond ifexpr elseexpr (EX_EXPR_COND _ ifexpr' elseexpr')
+                    = (EX_EXPR_COND EX_NIL ifexpr (EX_EXPR_COND elseexpr ifexpr' elseexpr'))
 
 -- XXX FIXME : not good impl.... use languageDef??
-unaryOperator :: Parser String
+unaryOperator :: Parser UnaryOp_
 unaryOperator = try(symbol "+")
             <|> try(symbol "-")
             <|> try(symbol "!")
@@ -748,7 +766,7 @@ unaryOperator = try(symbol "+")
             <?> "unaryOperator"
 
 -- XXX not good impl
-binaryOperator :: Parser String
+binaryOperator :: Parser BinaryOp_
 binaryOperator = try(symbol "+")
              <|> try(symbol "-")
              <|> try(symbol "*")
@@ -873,7 +891,8 @@ hexDigit' = do { a <- oneOf "xXzZ" <|> hexDigit; return [a] }
         <?> "hexDigit'"
 
 string' :: Parser String
-string' = string ""             -- XXX FIXME
+--string' = string ""
+string' = identifier    -- XXX FIXME : temp impl
 
 questionMark :: Parser String
 questionMark = symbol "?"       --- XXX FIXME

@@ -1,6 +1,7 @@
 2008-12-30  kei-os <keisuke.aono@gmail.com>
 
 	* expression実装テストファイル ExprTest.hs を追加。
+	* expressionを AST。
 
 2008-12-27  kei-os <keisuke.aono@gmail.com>
 
