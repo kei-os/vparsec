@@ -122,7 +122,6 @@ data Primary_ = PR_NUMBER String
               | PR_IDENT_EXPR String Expr_
               | PR_IDENT_RANGE String Range_
               | PR_CONCAT [Expr_]
-              | PR_MULT_CONCAT String   -- XXX TODO : impl
               | PR_MINMAX_EXPR String   -- XXX TODO : impl
                 deriving (Eq, Show)
 
@@ -262,7 +261,6 @@ commaPortReference :: Parser String
 commaPortReference = do { comma; a <- portReference; return a }
                   <?> "commaPortReference"
 
--- XXX TODO : AST
 portReference :: Parser String
 portReference = nameOfVariable
             <?> "portReference"
@@ -280,9 +278,8 @@ udpDeclaration = return (MODULE { mName = "none", mPorts = [], mItems = [] })
              <?> "udpDeclaration"
 
 constantExpression :: Parser String
---constantExpression = expression
 constantExpression = do { expression; return "expression:ok " }
-                 <?> "constantExpression"
+                <?> "constantExpression"
 
 {--------- XXX not yet ---------}
 moduleItem :: Parser ModuleItem_
@@ -761,7 +758,7 @@ primary = do { n <- try(number); return $ PR_NUMBER n }
       <|> try(do { id <- identifier;  expr <- brackets expression; return $ PR_IDENT_EXPR id expr })
       <|> try(do { id <- lexeme identifier; return $ PR_IDENT id }) 
       <|> try(do { c <- concatenation; return $ PR_CONCAT c})
---      <|> try(multipleConcatenation)      -- XXX TODO impl
+      <|> try(do { mc <- multipleConcatenation; return $ PR_CONCAT mc})
 --      <|> try(functionCall)               -- XXX TODO impl
 --      <|> try(parens mintypmaxExpression) -- XXX TODO impl
       <?> "primary"
@@ -889,9 +886,14 @@ concatenation = braces concatenation'
                             ; es <- lexeme(many commaExpression)
                             ; return $ (e:es) }
 
-multipleConcatenation :: Parser String      -- XXX TODO impl
-multipleConcatenation = string ""
+multipleConcatenation :: Parser [Expr_]
+multipleConcatenation =  braces multiConcat'
                    <?> "multipleConcatenation"
+    where
+        multiConcat' :: Parser [Expr_]
+        multiConcat' = do { e <- expression
+                          ; es <- concatenation
+                          ; return (e:es) }
 
 functionCall :: Parser String       -- XXX TODO impl
 functionCall = string ""
