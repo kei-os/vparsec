@@ -103,21 +103,19 @@ type ElseStmt_ = Stmt_
 --type NameOfBlock_ = String
 --type OutputDecl_ = String       -- XXX temp
 
-data DelayOrEvent_ = DE_DELAY_CONTROL  DelayControl_
-                   | DE_EVENT_CONTROL  EventControl_
-                   | DE_EXPR_EV Expr_ EventControl_
+data DelayOrEvent_ = DE_DELAY_CONTROL DelayControl_
+                   | DE_EVENT_CONTROL [Event_]
+                   | DE_EXPR_EV Expr_ [Event_]
                    | DE_NIL
                      deriving (Eq, Show)
 
 data DelayControl_ = DL_NUM Integer | DL_IDENT String deriving (Eq, Show)
-data EventControl_ = EV_IDENT String | EV_EXPR EventExpr_ deriving (Eq, Show)
+--data EventControl_ = EV_IDENT String | EV_EXPR [Event_] deriving (Eq, Show)
 
-data EventExpr_ = EV_EXPR_ Expr_
-                | EV_SCALAR Edge_ String    --  XXX TODO : change String to ScEvExpr_
-                | EV_LIST [EventExpr_]
-                  deriving (Eq, Show)
+data Edge_ = POS | NEG | VALUE deriving (Eq, Show)
+data Event_ = EVENT Edge_ Expr_ deriving (Eq, Show) -- new
+--data Event_ = EV_EXPR_ Expr_ | EV_SCALAR Edge_ String deriving (Eq, Show)   -- old
 
-data Edge_ = POSEDGE | NEGEDGE | VALUE_CHANGE deriving (Eq, Show)
 
 data Primary_ = PR_NUMBER String
               | PR_IDENT String
@@ -136,8 +134,8 @@ type ElseExpr_  = Expr_
 
 data Expr_ = EX_PRIMARY Primary_
            | EX_U_PRIMARY UnaryOp_ Primary_
-           | EX_EXPR_NODE Expr_ BinaryOp_ Expr_             -- left op right
-           | EX_EXPR_COND CondExpr_ IfExpr_ ElseExpr_     -- cond ifexpr elseexpr
+           | EX_NODE Expr_ BinaryOp_ Expr_             -- left op right
+           | EX_COND CondExpr_ IfExpr_ ElseExpr_     -- cond ifexpr elseexpr
            | EX_STRING String
            | EX_NIL
              deriving (Eq, Show)
@@ -646,30 +644,31 @@ mintypmaxExpression
      <|> do { a <- lexeme expression; return "expr4 " }
      <?> "mintypmaxExpression"
 
---eventControl :: Parser String
-eventControl :: Parser EventControl_
-eventControl = try(do { symbol "@"; id <- lexeme identifier; return $ EV_IDENT id })
-           <|> do { symbol "@"; ev <- parens eventExpression; return $ EV_EXPR ev }
+eventControl :: Parser [Event_]
+eventControl = try(do { symbol "@"; id <- lexeme identifier; return [(EVENT VALUE (EX_STRING id))] })
+           <|> do { symbol "@"; ev <- parens eventExpression; return ev }
            <?> "eventControl"
 
--- XXX use IEEE's BNF (need to omit left recursion)
--- XXX FIXME : returning dummy value
-eventExpression :: Parser EventExpr_
-eventExpression = do { optEventExpression; eventExpression'; return $ EV_SCALAR POSEDGE "hoge" }
+-- XXX using IEEE's BNF
+eventExpression :: Parser [Event_]
+eventExpression = do { b <- betaEventExpression
+                     ; e <- eventExpression'
+                     ; return (b:e) }
               <?> "eventExpression"
 
-optEventExpression :: Parser String
-optEventExpression = try(do { symbol "posedge"; lexeme expression; return "expr:ok " })
-                 <|> try(do { symbol "negedge"; b <- lexeme expression; return "expr:ok " })
-                 <|> try(lexeme identifier)
-                 <|> do { try(lexeme expression); return "expr:ok " }
-                 <?> "optEventExpression"
+betaEventExpression :: Parser Event_
+betaEventExpression = try(do { symbol "posedge"; e <- lexeme expression; return $ EVENT POS e })
+                 <|> try(do { symbol "negedge"; e <- lexeme expression; return $ EVENT NEG e })
+                 <|> try(do { id <- lexeme identifier; return $ EVENT VALUE (EX_STRING id) })
+                 <|> do { e <-lexeme expression; return $ EVENT VALUE e }
+                 <?> "betaEventExpression"
 
--- XXX TODO : semantic value
-eventExpression' :: Parser [EventExpr_]
-eventExpression'
-        = do { symbol "or"; e <- lexeme eventExpression; es <- eventExpression'; return (e:es) }
-      <|> do {a <- string ""; return [] }
+eventExpression' :: Parser [Event_]
+eventExpression' = do { symbol "or"
+                      ; e <- lexeme eventExpression
+                      ; es <- eventExpression'
+                      ; return $ e ++ es }
+               <|> do { a <- string ""; return [] }
       <?> "eventExpression'"
 
 -- Expressions
@@ -697,8 +696,8 @@ expression = do { b <- exprbeta
     where
         makeexpr :: Expr_ -> Expr_ -> Expr_
         makeexpr b EX_NIL = b
-        makeexpr b (EX_EXPR_NODE _ op r) = (EX_EXPR_NODE b op r)
-        makeexpr b (EX_EXPR_COND _ ifexpr elseexpr) = (EX_EXPR_COND b ifexpr elseexpr)
+        makeexpr b (EX_NODE _ op r) = (EX_NODE b op r)
+        makeexpr b (EX_COND _ ifexpr elseexpr) = (EX_COND b ifexpr elseexpr)
 
 -- XXX need lexeme??
 exprbeta :: Parser Expr_
@@ -722,14 +721,14 @@ expression' = try(do { op <- lexeme binaryOperator
    <?> "expression'"
     where       -- XXX i think there must be better way of writing...
         makeexpr' :: BinaryOp_ -> Expr_ -> Expr_ -> Expr_
-        makeexpr' op l r = (EX_EXPR_NODE r op l)
+        makeexpr' op l r = (EX_NODE r op l)
 
         makecond :: Expr_ -> Expr_ -> Expr_ -> Expr_
-        makecond ifexpr elseexpr EX_NIL = (EX_EXPR_COND EX_NIL ifexpr elseexpr)
-        makecond ifexpr elseexpr (EX_EXPR_NODE _ op r)
-                    = (EX_EXPR_COND EX_NIL ifexpr (EX_EXPR_NODE elseexpr op r))
-        makecond ifexpr elseexpr (EX_EXPR_COND _ ifexpr' elseexpr')
-                    = (EX_EXPR_COND EX_NIL ifexpr (EX_EXPR_COND elseexpr ifexpr' elseexpr'))
+        makecond ifexpr elseexpr EX_NIL = (EX_COND EX_NIL ifexpr elseexpr)
+        makecond ifexpr elseexpr (EX_NODE _ op r)
+                    = (EX_COND EX_NIL ifexpr (EX_NODE elseexpr op r))
+        makecond ifexpr elseexpr (EX_COND _ ifexpr' elseexpr')
+                    = (EX_COND EX_NIL ifexpr (EX_COND elseexpr ifexpr' elseexpr'))
 
 -- XXX FIXME : not good impl.... use languageDef??
 unaryOperator :: Parser UnaryOp_

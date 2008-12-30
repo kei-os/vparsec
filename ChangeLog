@@ -1,6 +1,7 @@
 2008-12-31  kei-os <keisuke.aono@gmail.com>
 
 	* portのいくつかの構文を not supportにした。
+	* eventExpressionを AST。
 
 2008-12-30  kei-os <keisuke.aono@gmail.com>
 
