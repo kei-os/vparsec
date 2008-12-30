@@ -223,7 +223,7 @@ moduleDeclaration = do { try(symbol "module"); a <- moduleDeclaration'; return a
         moduleDeclaration' :: Parser Module_
         moduleDeclaration'
               = do { n <- lexeme nameOfModule
-                   ; p <- listOfPorts
+                   ; p <- lexeme listOfPorts
                    ; semi
                    ; m <- lexeme(many moduleItem)
                    ; symbol "endmodule"
@@ -237,20 +237,13 @@ listOfPorts = parens listOfPorts'
           <|> do { string ""; return [] }
           <?> "listOfPorts"
     where
-        listOfPorts' = do { whiteSpace; p <- lexeme port; ps <- lexeme(many commaPorts); return (p:ps) }
+        listOfPorts' = do { p <- lexeme port; ps <- lexeme(many commaPorts); return (p:ps) }
                    <?> "listOfPorts'"
 
--- XXX TODO : AST
 port :: Parser String
 port = try(portExpression)
-    <|> do { a <- dot; b <- lexeme nameOfPort; c <- parens port'; return $ a ++ b ++ c }
     <|> string ""
     <?> "port"
-        where
-            port' :: Parser String
-            port' = portExpression
-                <|> string ""
-                <?> "port'"
 
 commaPorts :: Parser String
 commaPorts = do { comma; a <- port; return a }
@@ -259,13 +252,13 @@ commaPorts = do { comma; a <- port; return a }
 -- XXX TODO : AST
 portExpression :: Parser String
 portExpression = try(portReference)
-             <|> braces portExpression'
+--             <|> braces portExpression'       -- not support
              <?> "portExpression"
-                where
-                    portExpression' :: Parser String
-                    portExpression' = do { a <- portReference
-                                         ; b <- many(commaPortReference)
-                                         ; return $ a ++ concat(b) }
+--                where
+--                    portExpression' :: Parser String
+--                    portExpression' = do { a <- portReference
+--                                         ; b <- many(commaPortReference)
+--                                         ; return $ a ++ concat(b) }
 
 commaPortReference :: Parser String
 commaPortReference = do { comma; a <- portReference; return a }
@@ -273,21 +266,8 @@ commaPortReference = do { comma; a <- portReference; return a }
 
 -- XXX TODO : AST
 portReference :: Parser String
-portReference = do { a <- nameOfVariable
---                   ; b <- portReference'    -- XXX get port information
-                   ; portReference'    -- XXX get port information  (currently not use lower block's info)
-                   ; return a }
+portReference = nameOfVariable
             <?> "portReference"
-    where
-        portReference' :: Parser String
-        portReference' = do { a <- brackets constantExpression'; return a }
-                      <|> string ""
-        constantExpression' :: Parser String
-        constantExpression' = constantExpression
-                          <|> do { a <- lexeme constantExpression
-                                 ; b <- colon
-                                 ; c <- lexeme constantExpression
-                                 ; return $ a ++ b ++ c}
 
 nameOfPort :: Parser String
 nameOfPort = identifier <?> "nameOfPort"

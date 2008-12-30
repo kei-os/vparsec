@@ -1,3 +1,7 @@
+2008-12-31  kei-os <keisuke.aono@gmail.com>
+
+	* portのいくつかの構文を not supportにした。
+
 2008-12-30  kei-os <keisuke.aono@gmail.com>
 
 	* expression実装テストファイル ExprTest.hs を追加。

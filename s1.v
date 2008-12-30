@@ -31,7 +31,7 @@ end
 assign a = 10;
 
 always@(posedge clk or negedge rst_n) begin
-	if (a)		foo <= 1;
+	if (a)		foo <= 1 + 2;
 	else if (b)	foo <= 2;
 	else		foo <= 3;
 end
