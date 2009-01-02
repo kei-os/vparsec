@@ -109,15 +109,14 @@ data DelayOrEvent_ = DE_DELAY_CONTROL DelayControl_
                    | DE_NIL
                      deriving (Eq, Show)
 
-data DelayControl_ = DL_NUM Integer | DL_IDENT String deriving (Eq, Show)
---data EventControl_ = EV_IDENT String | EV_EXPR [Event_] deriving (Eq, Show)
+--data DelayControl_ = DL_NUM Integer | DL_IDENT String deriving (Eq, Show)
+data DelayControl_ = DL_NUM Number_ | DL_IDENT String deriving (Eq, Show)
 
 data Edge_ = POS | NEG | VALUE deriving (Eq, Show)
 data Event_ = EVENT Edge_ Expr_ deriving (Eq, Show) -- new
---data Event_ = EV_EXPR_ Expr_ | EV_SCALAR Edge_ String deriving (Eq, Show)   -- old
 
 
-data Primary_ = PR_NUMBER String
+data Primary_ = PR_NUMBER Number_       -- XXX TODO : test (Number_)
               | PR_IDENT String
               | PR_IDENT_EXPR String Expr_
               | PR_IDENT_RANGE String Range_
@@ -162,9 +161,12 @@ data Block_ = BLOCK String [BlockItem_] [Stmt_] deriving (Eq, Show)
 
 -- should i use Integer (not Int)??
 type Typ_ = Int
-type Max_ = Int
-type Min_ = Int
-type Width_ = Int
+--type Max_ = Int
+type Max_ = Number_     -- XXX TODO : test
+--type Min_ = Int
+type Min_ = Number_     -- XXX TODO : test
+--type Width_ = Int
+type Width_ = String    -- XXX FIXME : temp for Number_
 type Range_ = (Max_, Min_, Width_)
 
 -- XXX TODO : reg / memory
@@ -179,6 +181,10 @@ data NetType_ = NET_WIRE | NET_TRI | NET_TRI1 | NET_SUPPLY0 | NET_WAND
                 deriving (Eq, Show, Ord)
 
 data RegType_ = REG | MEM deriving (Eq, Show, Ord)
+
+data NumType_ = NUM_BIN | NUM_OCT | NUM_DEC | NUM_HEX deriving (Eq, Show, Ord)
+data Number_ = NUMBER NumType_ String String deriving (Eq, Show, Ord)   -- type size value
+
 
 {- for tiny parser test  -}
 test :: Show a => Parser a -> String -> IO ()
@@ -314,8 +320,8 @@ listOfParamAssignment = do { a <- paramAssignment
 paramAssignment :: Parser String
 paramAssignment = do { a <- lexeme identifier
                      ; b <- symbol "="
-                     ; c <- lexeme constantExpression
-                     ; return $ a ++ b ++ c }
+                     ; lexeme constantExpression    -- XXX TODO : use Expr_
+                     ; return $ a ++ b }
              <?> "paramAssignment"
 
 commaParamAssignment :: Parser String
@@ -346,7 +352,8 @@ portIdentifier = identifier
 
 rangeOrEmpty :: Parser Range_
 rangeOrEmpty = try(lexeme range)
-           <|> do { string ""; return (0, 0, 1) }
+--           <|> do { string ""; return (0, 0, 1) }
+           <|> do { string ""; return ((NUMBER NUM_DEC "1" "0"), (NUMBER NUM_DEC "1" "0"), "1") }     -- XXX FIXME : temp for Number_
            <?> "rangeOrEmpty"
 
 range :: Parser Range_
@@ -359,7 +366,8 @@ range = do { symbol "["; r <- range'; symbol "]"; return r }
                     ; colon
 --                    ; min <- lexeme constantExpression
                     ; min <- number     -- XXX FIXME : need valid constantExpression
-                    ; return (read max, read min, (read max) - (read min) + 1 ) }   -- XXX TODO improve
+--                    ; return (read max, read min, (read max) - (read min) + 1 ) }   -- XXX TODO improve
+                    ; return (max, min, "width on impl " ) }   -- XXX TODO improve
               <?> "range'"
 
 outputDeclaration :: Parser Sig_
@@ -631,7 +639,7 @@ delayOrEventControl = try (do { dl <- delayControl; return $ DE_DELAY_CONTROL dl
                   <?> "delayOrEventControl"
 
 delayControl :: Parser DelayControl_
-delayControl = try(do { symbol "#"; n <- number; return $ DL_NUM $ read n })
+delayControl = try(do { symbol "#"; n <- number; return $ DL_NUM n })
            <|> try(do { symbol "#"; b <- lexeme identifier; return $ DL_IDENT b })
 --           <|> do { symbol "#"; e <- parens mintypmaxExpression; return e }   -- XXX not support yet
            <?> "delayControl"
@@ -769,7 +777,7 @@ primary = do { n <- try(number); return $ PR_NUMBER n }
       <|> try(parens mintypmaxExpression)
       <?> "primary"
 
-number :: Parser String
+number :: Parser Number_
 number = lexeme hexNumber
      <|> lexeme octalNumber
      <|> lexeme binaryNumber
@@ -778,44 +786,46 @@ number = lexeme hexNumber
      <?> "number"
 
 -- XXX need lexeme??
-decimalNumber :: Parser String
-decimalNumber = try(do { a <- size <|> string ""
-                       ; b <- decimalBase
-                       ; c <- unsignedNumber
-                       ; return $ a ++ b ++ c })
-            <|> try(do { a <- sign <|> string ""
-                       ; b <- unsignedNumber
-                       ; return $ a ++ b })
+decimalNumber :: Parser Number_
+decimalNumber = try(do { sz <- size <|> string ""
+                       ; decimalBase
+                       ; num <- unsignedNumber
+                       ; return $ NUMBER NUM_DEC sz num })
+            <|> try(do { s <- sign <|> string ""
+                       ; num <- unsignedNumber
+                       ; return $ NUMBER NUM_DEC "" (s ++ num) })
             <?> "decimalNumber"
 
-octalNumber :: Parser String
-octalNumber = try(do { a <- size <|> string ""
-                 ; b <- octalBase
-                 ; c <- octalDigit
-                 ; d <- many octalDigit'
-                 ; return $ a ++ b ++ c ++ (concat d)})
+octalNumber :: Parser Number_
+octalNumber = try(do { sz <- size <|> string ""
+                     ; octalBase
+                     ; od <- octalDigit
+                     ; ods <- many octalDigit'
+                     ; return $ NUMBER NUM_OCT sz (od ++ (concat ods)) })
         <?> "octalNumber"
     where
         octalDigit' = string "_" <|> octalDigit
 
-binaryNumber :: Parser String
-binaryNumber = try(do { a <- size <|> string ""
-                  ; b <- binaryBase
-                  ; c <- binaryDigit
-                  ; d <- many binaryDigit'
-                  ; return $ a ++ b ++ c ++ (concat d) })
+binaryNumber :: Parser Number_
+binaryNumber = try(do { sz <- size <|> string ""
+                      ; binaryBase
+                      ; bd <- binaryDigit
+                      ; bds <- many binaryDigit'
+                      ; return $ NUMBER NUM_BIN sz (bd ++ (concat bds)) })
             <?> "binaryNumber"
     where
+        binaryDigit' :: Parser String
         binaryDigit' = string "_" <|> binaryDigit
 
-hexNumber :: Parser String
-hexNumber = try(do { a <- size <|> string ""
-               ; b <- hexBase
-               ; c <- hexDigit'
-               ; d <- many hexDigit''
-               ; return $ a ++ b ++ c ++ (concat d) })
+hexNumber :: Parser Number_
+hexNumber = try(do { sz <- size <|> string ""
+                   ; hexBase
+                   ; hd <- hexDigit'
+                   ; hds <- many hexDigit''
+                   ; return $ NUMBER NUM_HEX sz (hd ++ (concat hds)) })
         <?> "hexNumber"
     where
+        hexDigit'' :: Parser String
         hexDigit'' = string "_" <|> hexDigit'
 
 -- XXX TODO impl
@@ -840,6 +850,7 @@ unsignedNumber = do { a <- decimalDigit
     where
         decimalDigit' = string "_" <|> decimalDigit
 
+--------
 decimalBase :: Parser String
 decimalBase = try (string "'d") <|> string "'D"
           <?> "decimalBase"

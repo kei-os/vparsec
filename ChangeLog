@@ -1,3 +1,7 @@
+2009-01-02  kei-os <keisuke.aono@gmail.com>
+
+	* NumType_, Number_ 型を追加して decimalNumber, octalNumber, binaryNumber, hexNumberを AST。
+
 2008-12-31  kei-os <keisuke.aono@gmail.com>
 
 	* portのいくつかの構文を not supportにした。
