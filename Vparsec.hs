@@ -197,7 +197,6 @@ test p input
 parseVerilog :: FilePath -> IO ()
 parseVerilog fname
     = do { input <- readFile fname
---         ; putStr input
          ; case parse verilog1995 fname input of
                 Left err -> do { putStr "Error parsing at : " ; print err }
                 Right x -> print x }
@@ -433,6 +432,7 @@ regDeclaration = do { symbol "reg"
                     ; return $ REG_SIG { regType_ = REG, name_ = l, range_ = r } }
              <?> "regDeclaration"
 
+-- XXX 
 listOfRegisterVariables :: Parser [String]
 listOfRegisterVariables = do { r <- lexeme registerVariable
                              ; rs <- lexeme(many commaRegisterVariable)
@@ -443,11 +443,22 @@ listOfRegisterVariables = do { r <- lexeme registerVariable
         commaRegisterVariable = do { comma; registerVariable >>= return }
 
 registerVariable :: Parser String
-registerVariable = do { a <- lexeme identifier
-                      ; rangeOrEmpty    -- XXX TODO : array size
-                      ; return a }
-              <?> "registerVariable"
+registerVariable = try(do { m <- lexeme nameOfMemory; return m })
+               <|> do { r <- lexeme identifier; return r }
+               <?> "registerVariable"
 
+-- XXX FIXME : number and type
+nameOfMemory :: Parser String
+nameOfMemory = do { id <- lexeme identifier
+                  ; a <- symbol "["
+                  ; b <- number
+                  ; c <- symbol ":"
+                  ; d <- number
+                  ; e <- symbol "]"
+                  ; return $ id ++ a ++ show b ++ c ++ show d ++ e }
+            <?> "nameOfMemory"
+
+-- XXX on work
 timeDeclaration :: Parser ModuleItem_
 timeDeclaration = do { a <- symbol "time"
                      ; b <- listOfRegisterVariables

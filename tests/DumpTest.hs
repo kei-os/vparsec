@@ -1,6 +1,7 @@
 module DumpTest where
 
 import Control.Monad(forM_)
+import System.IO
 
 data Foo = FStr String
          | FInt Integer
@@ -43,4 +44,77 @@ dat :: Foo
 dat = FObj ([("a", FInt 10), ("b", FStr "foo"),
             ("c", FNil), ("d", FBool True), ("e", FBool False),
             ("f", FBar (BStr "bar"))])
+
+-------------------------------------------------------------------------
+
+myDump :: FilePath -> Foo -> IO ()
+myDump fname f = do outh <- openFile fname WriteMode
+                    hPutStr outh $ myShow f
+                    hClose outh
+
+a :: Foo
+a = FStr "foo"
+
+myShow :: Foo -> String
+--myShow x = show x
+myShow = strFoo
+
+strBar :: Bar -> String
+strBar (BStr s) = "[b: " ++ s ++ "]"
+strBar (BInt i) = "[b: " ++ show i ++ "]"
+
+strFoo' :: String -> String
+strFoo' str = "[f: " ++ str ++ "]"
+
+strFoo :: Foo -> String
+--strFoo (FStr s) = s       -- initial test version
+strFoo (FStr s) = strFoo' s
+strFoo (FInt i) = strFoo' $ show i
+strFoo (FBool True) = strFoo' "true"
+strFoo (FBool False) = strFoo' "false"
+strFoo FNil = strFoo' "nil"
+strFoo (FBar b) = strBar b
+strFoo (FObj xs) = do
+    case xs of
+        [] -> ""
+{-
+        (p:ps) -> do { let a = showPair p
+                     ; let b = strFoo $ FObj ps
+                     ; a ++ b }
+-}
+        (p:ps) -> showPair p ++ strFoo (FObj ps)        -- this is simpler
+            where
+                showPair :: (String, Foo) -> String
+                showPair (k, v) = "(" ++ k ++ ")" ++ strFoo v ++ "\n"
+
+---------------------------------------------------------------------------------
+{-      -- XXX not work...
+data Nest = S String
+          | LIST [Nest]
+            deriving (Show)
+
+nest :: Nest
+--nest = LIST ([S "a", S "b", S "c", LIST ([S "d", S "e"])])
+nest = LIST ([S "a", S "b", S "c"])
+
+showNest :: Nest -> Int -> IO ()
+showNest (S str) i = do { showSpace i; putStrLn str }
+showNest (LIST []) _ = putStrLn ""
+showNest (LIST (x:xs)) i = do { showNest x (i+1); showNest xs i }
+
+--showNest (LIST (x:xs)) i = do showNest x i 
+--                              showNest xs (i+1)
+
+-}
+
+showSpace :: Int -> IO ()
+showSpace i = if i > 0 then do { putStr " "; showSpace $ dec i } else putStr ""
+
+
+inc :: (Num a) => a -> a
+inc i = i + 1
+
+dec :: (Num a) => a -> a
+dec i = if i == 0 then 0        -- XXX cannot use <= or <
+        else i - 1
 
