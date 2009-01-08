@@ -59,7 +59,7 @@ data ModuleItem_ = MI_PARAM_DECL    String              -- XXX TODO impl
                  | MI_CONT_ASSIGN   [NetAssign_]
                  | MI_PORT_DECL     Sig_
                  | MI_REG_DECL      Sig_
-                 | MI_TIME_DECL     String              -- XXX TODO impl
+                 | MI_TIME_DECL     Sig_
                  | MI_INT_DECL      Sig_
                  | MI_NET_DECL      Sig_
                  | MI_INITIAL       Stmt_
@@ -296,7 +296,7 @@ moduleItem = try(lexeme parameterDeclaration)
          <|> try(do { a <- lexeme outputDeclaration; return $ MI_PORT_DECL a })
          <|> try(do { a <- lexeme inoutDeclaration; return $ MI_PORT_DECL a })
          <|> try(do { a <- lexeme regDeclaration; return $ MI_REG_DECL a })
-         <|> try(lexeme timeDeclaration)
+         <|> try(do { a <- lexeme timeDeclaration; return $ MI_TIME_DECL a })
          <|> try(do { a <- lexeme integerDeclaration; return $ MI_INT_DECL a })
          <|> try(lexeme netDeclaration)
          <|> try(do { a <- lexeme initialStatement; return $ MI_INITIAL a })
@@ -458,12 +458,11 @@ nameOfMemory = do { id <- lexeme identifier
                   ; return $ id ++ a ++ show b ++ c ++ show d ++ e }
             <?> "nameOfMemory"
 
--- XXX on work
-timeDeclaration :: Parser ModuleItem_
-timeDeclaration = do { a <- symbol "time"
-                     ; b <- listOfRegisterVariables
-                     ; c <- semi
-                     ; return $ MI_TIME_DECL $ a ++ (concat b) ++ c }
+timeDeclaration :: Parser Sig_
+timeDeclaration = do { symbol "time"
+                     ; t <- listOfRegisterVariables
+                     ; semi
+                     ; return $ REG_SIG { regType_ = REG, name_ = t, range_ = ((NUMBER NUM_DEC "1" "0"), (NUMBER NUM_DEC "1" "0"), "1") } }   -- XXX MEM
               <?> "timeDeclaration"
 
 integerDeclaration :: Parser Sig_

@@ -2,6 +2,7 @@
 
 	* nameOfMemoryを String型で実装。registerVariableでパースできるようにした。
 	* integerDeclarationを実装。
+	* timeDeclarationを実装。
 
 2009-01-02  kei-os <keisuke.aono@gmail.com>
 
