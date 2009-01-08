@@ -1,6 +1,7 @@
 2009-01-08  kei-os <keisuke.aono@gmail.com>
 
 	* nameOfMemoryを String型で実装。registerVariableでパースできるようにした。
+	* integerDeclarationを実装。
 
 2009-01-02  kei-os <keisuke.aono@gmail.com>
 
