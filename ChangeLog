@@ -2,6 +2,7 @@
 
 	* preparation for parameterDeclaration AST and caseStatement.
 	* divide Vparsec.hs into 2 files, which are Vparsec.hs and Vparsec/Types.hs.
+	* add Vparsec/Pretty.hs file, which is created to print Verilog AST.
 
 2009-01-08  kei-os <keisuke.aono@gmail.com>
 

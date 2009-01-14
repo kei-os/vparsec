@@ -1,6 +1,7 @@
 module Vparsec where
 
 import Vparsec.Types
+import Vparsec.Pretty
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr

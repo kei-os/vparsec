@@ -4,7 +4,7 @@ data Module_ = MODULE
     { mName     :: String
     , mPorts    :: [String]
     , mItems    :: [ModuleItem_]
-    } deriving (Eq, Show)
+    } -- deriving (Eq, Show)
 
 data ModuleItem_ = MI_PARAM_DECL    String              -- XXX TODO impl
                  | MI_CONT_ASSIGN   [NetAssign_]
