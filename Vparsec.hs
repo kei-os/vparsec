@@ -303,13 +303,15 @@ moduleItem = try(lexeme parameterDeclaration)
          <|> try(do { a <- lexeme alwaysStatement; return $ MI_ALWAYS a })
          <?> "moduleItem"
 
+-- XXX on work
 parameterDeclaration :: Parser ModuleItem_
-parameterDeclaration = do { a <- symbol "parameter"
-                          ; b <- listOfParamAssignment
-                          ; c <- semi
-                          ; return $ MI_PARAM_DECL $ a ++ b ++ c }
+parameterDeclaration = do { symbol "parameter"
+                          ; p <- listOfParamAssignment
+                          ; semi
+                          ; return $ MI_PARAM_DECL $ p }    -- XXX on work
                   <?> "parameterDeclaration"
 
+-- XXX on work
 listOfParamAssignment :: Parser String
 listOfParamAssignment = do { a <- paramAssignment
                            ; b <- try(many commaParamAssignment)
@@ -618,6 +620,16 @@ conditionalStatement = do { symbol "if"
         elseStatementOrNull :: Parser Stmt_
         elseStatementOrNull = try(do { symbol "else"; stmt <- statementOrNull; return stmt })
                           <|> do { string ""; return ST_NIL }
+
+-- XXX TODO : impl
+caseStatement :: Parser String
+caseStatement = string ""
+            <?> "caseStatement"
+
+-- XXX TODO : impl
+caseItem :: Parser String
+caseItem = string ""
+       <?> "caseItem"
 
 regAssignment :: Parser RegAssign_
 regAssignment = do { lv <- lexeme reglValue

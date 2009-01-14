@@ -15,35 +15,59 @@ data Bar = BStr String
          | BInt Integer
            deriving (Show)
 
+ts = 2
+
 printBar :: Bar -> IO ()
 printBar (BStr s) = putStrLn $ show s
 printBar (BInt i) = putStrLn $ show i
 
-printValue :: Foo -> IO ()
-printValue (FBar f) = printBar f
-printValue (FStr s) = putStrLn $ show s
-printValue (FInt i) = putStrLn $ show i
-printValue (FBool True) = putStrLn "true"
-printValue (FBool False) = putStrLn "false"
-printValue FNil = putStrLn "nil"
-printValue (FObj xs) = do
-    putStr "{ "   
+printValue :: Foo -> Int -> IO ()
+printValue (FBar f) _ = printBar f
+printValue (FStr s) _ = putStrLn $ show s
+printValue (FInt i) _ = putStrLn $ show i
+printValue (FBool True) _ = putStrLn "true"
+printValue (FBool False) _ = putStrLn "false"
+printValue FNil _ = putStrLn "nil"
+printValue (FObj xs) i = do
+    putStrLn ""
+    putSpace i
+    putStrLn "{"   
+    putSpace i
     case xs of
         [] -> putStrLn ""
-        (p:ps) -> do putPair p
-                     forM_ ps $ \q -> do putStr ", "
+        (p:ps) -> do putSpace 2
+                     putPair p
+                     forM_ ps $ \q -> do putSpace i
+                                         putStr ", "
                                          putPair q
+    putSpace i
     putStrLn "}"
         where
             putPair (k, v) = do putStr $ show k
                                 putStr ": "
-                                printValue v
+                                printValue v (i+ts)
+
+putSpace :: Int -> IO ()
+putSpace i = if i > 0 then do {putStr " "; putSpace (i-1) }
+                      else putStr ""
 
 -- test data
 dat :: Foo
-dat = FObj ([("a", FInt 10), ("b", FStr "foo"),
-            ("c", FNil), ("d", FBool True), ("e", FBool False),
+dat = FObj ([   ("a", FInt 10),
+                ("b", FStr "foo"),
+                ("c", FNil),
+                ("d", FBool True),
+                ("e", FBool False),
+                ("f", FBar (BStr "bar")),
+                ("g", FObj[("gg", FBool False), ("hh", FBool True), ("ii", FBool False)])    -- test
+            ])
+
+{-
+datnest :: Foo
+datnest = FObj ([("a", FNil), ("b", FBool True), [FObj ("e", FBool False)],
             ("f", FBar (BStr "bar"))])
+-}
+
 
 -------------------------------------------------------------------------
 

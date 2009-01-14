@@ -1,3 +1,7 @@
+2009-01-14  kei-os <keisuke.aono@gmail.com>
+
+	* preparation for parameterDeclaration AST and caseStatement.
+
 2009-01-08  kei-os <keisuke.aono@gmail.com>
 
 	* nameOfMemoryを String型で実装。registerVariableでパースできるようにした。
