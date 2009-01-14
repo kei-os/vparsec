@@ -1,6 +1,7 @@
 2009-01-14  kei-os <keisuke.aono@gmail.com>
 
 	* preparation for parameterDeclaration AST and caseStatement.
+	* divide Vparsec.hs into 2 files, which are Vparsec.hs and Vparsec/Types.hs.
 
 2009-01-08  kei-os <keisuke.aono@gmail.com>
 
